@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "source_revision": "f439518e473a96b1982ced9ccf1d6b35e0bda200",
+  "source_revision": "f8edc23584e7857f70189e8c975129bd14cc8d82",
   "components": 11,
   "connections": 10,
   "source_references_per_language": 33,
@@ -71,18 +71,18 @@
     {
       "component": "build-wiring",
       "path": "deployment/src/main/java/io/quarkiverse/authorization/server/deployment/AuthorizationServerProcessor.java",
-      "line": 162,
-      "end_line": 229,
-      "source_sha256": "5309d1e960fa123d901e761191695e4f66e6a22ace7b8bf06e1ae744830f8c15",
+      "line": 133,
+      "end_line": 178,
+      "source_sha256": "2935d794f3c65e834c533f8d55cccb0919db268f21b783d4dcec8f9f33a707a5",
       "type": "io.quarkiverse.authorization.server.deployment.AuthorizationServerProcessor",
       "boundary": "internal"
     },
     {
       "component": "build-wiring",
       "path": "deployment/src/main/java/io/quarkiverse/authorization/server/deployment/AuthorizationServerProcessor.java",
-      "line": 496,
-      "end_line": 591,
-      "source_sha256": "5309d1e960fa123d901e761191695e4f66e6a22ace7b8bf06e1ae744830f8c15",
+      "line": 340,
+      "end_line": 434,
+      "source_sha256": "2935d794f3c65e834c533f8d55cccb0919db268f21b783d4dcec8f9f33a707a5",
       "type": "io.quarkiverse.authorization.server.deployment.AuthorizationServerProcessor",
       "boundary": "internal"
     },
@@ -107,7 +107,7 @@
       "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/web/OAuth2TokenEndpointHandler.java",
       "line": 63,
       "end_line": 119,
-      "source_sha256": "a420940b79a287e00101bf1597c9b12513dcce17390a929bac4e4b150a4c3493",
+      "source_sha256": "63e9991705902adba6c226d5691c786755a5bbcfecb7bf7dcc41c500ba439d06",
       "type": "io.quarkiverse.authorization.server.runtime.web.OAuth2TokenEndpointHandler",
       "boundary": "internal"
     },
@@ -116,7 +116,7 @@
       "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/authorizationcode/web/OAuth2AuthorizationEndpointHandler.java",
       "line": 74,
       "end_line": 121,
-      "source_sha256": "d3491781577f43ef8cdf206f37ddabe67abac2218e4ffce33e112a6ee55e1b78",
+      "source_sha256": "7bdd3de912a630510945f70b6c69200b9f123342c1aea0ded961179597b2bf08",
       "type": "io.quarkiverse.authorization.server.runtime.grant.authorizationcode.web.OAuth2AuthorizationEndpointHandler",
       "boundary": "internal"
     },
@@ -148,7 +148,7 @@
       "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/client/web/OAuth2ClientAuthenticationMechanism.java",
       "line": 69,
       "end_line": 119,
-      "source_sha256": "46cf69239b1e912ba69bb3b92d63b6af0579df7b2fd833791138c9b09351e50e",
+      "source_sha256": "79a36adbf282d69ff3a58bdf4b4de371ca413dc2a7fa4c258072712303d02db7",
       "type": "io.quarkiverse.authorization.server.runtime.client.web.OAuth2ClientAuthenticationMechanism",
       "boundary": "internal"
     },
@@ -157,7 +157,7 @@
       "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/client/authentication/ClientSecretAuthenticationProvider.java",
       "line": 61,
       "end_line": 98,
-      "source_sha256": "6a7effdcf060f297534880dc78f82fdbf6c44ff40a82fa847159c32de13d72dc",
+      "source_sha256": "f179fa7d33f16bffb3c84598fcde1989d8c999acaa2da97b2bc86b5ff2ff16aa",
       "type": "io.quarkiverse.authorization.server.runtime.client.authentication.ClientSecretAuthenticationProvider",
       "boundary": "internal"
     },
@@ -166,7 +166,7 @@
       "path": "runtime/src/main/java/io/quarkiverse/authorization/server/client/ClientSecretVerifier.java",
       "line": 6,
       "end_line": 9,
-      "source_sha256": "5e34492aeefbbdad49b4f9063223c8ea615ddbbae0591950a56bc89937bd9399",
+      "source_sha256": "5b52866346e14188442ef15bb2ac12e87f96b0f6ac877ead9fb78dad5c793f07",
       "type": "io.quarkiverse.authorization.server.client.ClientSecretVerifier",
       "boundary": "public"
     },
@@ -211,7 +211,7 @@
       "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/config/RegisteredClientRepositoryProducer.java",
       "line": 26,
       "end_line": 58,
-      "source_sha256": "90dbdfb6fff80d10a402772513bdb5d4fde0108315273c2cad5cacf577ff456e",
+      "source_sha256": "480a898f1faa6856511148cd8e02b8a38fc4a479e830e61eacef1bc0ae221a22",
       "type": "io.quarkiverse.authorization.server.runtime.config.RegisteredClientRepositoryProducer",
       "boundary": "internal"
     },
@@ -229,8 +229,7 @@
       "path": "runtime/src/main/java/io/quarkiverse/authorization/server/package-info.java",
       "line": 1,
       "end_line": 6,
-      "source_sha256": "8d74c6c0295f2a5b86bc0288fd273598c9f77e9baa73c6953016a32869a5564b",
-      "package": "io.quarkiverse.authorization.server"
+      "source_sha256": "8d74c6c0295f2a5b86bc0288fd273598c9f77e9baa73c6953016a32869a5564b"
     },
     {
       "component": "application-spi",
@@ -345,7 +344,7 @@
       "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/authorizationcode/authorization/AuthorizationConsentProcessor.java",
       "line": 122,
       "end_line": 187,
-      "source_sha256": "a823ceff973d1d91fe44ec431cee599da34e83738e407a2c9c41da5d6f46e03c",
+      "source_sha256": "2100aebab641cd7d47ecf1b54d602f179eb5e9397a4ae1b18fb2bf0281922f3b",
       "type": "io.quarkiverse.authorization.server.runtime.grant.authorizationcode.authorization.AuthorizationConsentProcessor",
       "boundary": "internal"
     },
@@ -358,5 +357,6 @@
       "type": "io.quarkiverse.authorization.server.jdbc.JdbcOAuth2AuthorizationConsentService",
       "boundary": "public"
     }
-  ]
+  ],
+  "reviewed_at": "2026-09-28"
 }

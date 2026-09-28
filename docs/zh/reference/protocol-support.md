@@ -50,9 +50,9 @@ Multiple issuers 使用有限配置 tenant 集合，并显式提供仓储和密�
 
 源码链接固定到本页核对的提交。既有 Java/JVM/native 结果有各自的范围和日期，编辑或构建文档不会重新执行它们。[Playground](/zh/playground/)单独标识哪些流程真正连接到在线后端；文档写明支持某项能力不等于对应演示已接通。
 
-[AuthorizationServerTenantRegistry]: https://github.com/flynndi/quarkus-authorization-server/blob/1d1c6d530e0cc7fabf88e7e541316abfcb00abcb/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/tenant/AuthorizationServerTenantRegistry.java
-[JdbcTransactionSupport]: https://github.com/flynndi/quarkus-authorization-server/blob/1d1c6d530e0cc7fabf88e7e541316abfcb00abcb/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/jdbc/JdbcTransactionSupport.java
-[OAuth2RefreshTokenGenerator]: https://github.com/flynndi/quarkus-authorization-server/blob/1d1c6d530e0cc7fabf88e7e541316abfcb00abcb/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/token/OAuth2RefreshTokenGenerator.java
-[OAuth2TokenEndpointHandler]: https://github.com/flynndi/quarkus-authorization-server/blob/1d1c6d530e0cc7fabf88e7e541316abfcb00abcb/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/web/OAuth2TokenEndpointHandler.java
-[RefreshTokenGrant]: https://github.com/flynndi/quarkus-authorization-server/blob/1d1c6d530e0cc7fabf88e7e541316abfcb00abcb/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/refreshtoken/RefreshTokenGrant.java
-[TokenExchangeGrant]: https://github.com/flynndi/quarkus-authorization-server/blob/1d1c6d530e0cc7fabf88e7e541316abfcb00abcb/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/tokenexchange/TokenExchangeGrant.java
+[AuthorizationServerTenantRegistry]: https://github.com/flynndi/quarkus-authorization-server/blob/f8edc23584e7857f70189e8c975129bd14cc8d82/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/tenant/AuthorizationServerTenantRegistry.java
+[JdbcTransactionSupport]: https://github.com/flynndi/quarkus-authorization-server/blob/f8edc23584e7857f70189e8c975129bd14cc8d82/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/jdbc/JdbcTransactionSupport.java
+[OAuth2RefreshTokenGenerator]: https://github.com/flynndi/quarkus-authorization-server/blob/f8edc23584e7857f70189e8c975129bd14cc8d82/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/token/OAuth2RefreshTokenGenerator.java
+[OAuth2TokenEndpointHandler]: https://github.com/flynndi/quarkus-authorization-server/blob/f8edc23584e7857f70189e8c975129bd14cc8d82/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/web/OAuth2TokenEndpointHandler.java
+[RefreshTokenGrant]: https://github.com/flynndi/quarkus-authorization-server/blob/f8edc23584e7857f70189e8c975129bd14cc8d82/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/refreshtoken/RefreshTokenGrant.java
+[TokenExchangeGrant]: https://github.com/flynndi/quarkus-authorization-server/blob/f8edc23584e7857f70189e8c975129bd14cc8d82/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/tokenexchange/TokenExchangeGrant.java

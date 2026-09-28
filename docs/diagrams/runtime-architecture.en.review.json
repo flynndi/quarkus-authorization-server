@@ -3,7 +3,7 @@
   "locale": "en",
   "output": "runtime-architecture.en.html",
   "source": "runtime-architecture.en.json",
-  "revision": "f439518e473a96b1982ced9ccf1d6b35e0bda200",
+  "revision": "f8edc23584e7857f70189e8c975129bd14cc8d82",
   "components": 11,
   "verified_source_references": 33,
   "source_check": "runtime-architecture.source-check.json",
@@ -29,7 +29,7 @@
     "observations": [
       "Four desktop viewports pass the automated containment and readability checks.",
       "Light and dark images at 1440x900 and 2048x1320 were inspected: nodes, edges, labels and cards do not overlap.",
-      "The large desktop composition uses the available vertical space without a conspicuous empty lower band."
+      "The overview fits in the initial viewport; source details remain available through component selection."
     ],
     "limits": "Presentation and source correspondence only; OAuth flows, JVM/native execution, export downloads and Cloudflare deployment were not tested."
   },
@@ -41,15 +41,15 @@
     "topology_layout_and_source_locations": "identical"
   },
   "specification": {
-    "sha256": "f01bfb58aff98e1f6d6ff51b712aee899f5531148cd016c9f53352bf406e01a3",
+    "sha256": "9954bce5e41786793ed8655903faee3821ffaab8518ed391bafda3675ebb76b9",
     "bytes": 16343
   },
   "artifact": {
-    "sha256": "7597c66ea305d4c1395ab0eae01e02eeed68c83106c3cfeceeed97ce463d568b",
+    "sha256": "f0595b1ec69690f02c92ca5daa4bcca050284fdeae053ad343c0e460dd5dfabe",
     "bytes": 834384
   },
-  "specification_sha256": "f01bfb58aff98e1f6d6ff51b712aee899f5531148cd016c9f53352bf406e01a3",
-  "artifact_sha256": "7597c66ea305d4c1395ab0eae01e02eeed68c83106c3cfeceeed97ce463d568b",
+  "specification_sha256": "9954bce5e41786793ed8655903faee3821ffaab8518ed391bafda3675ebb76b9",
+  "artifact_sha256": "f0595b1ec69690f02c92ca5daa4bcca050284fdeae053ad343c0e460dd5dfabe",
   "bilingual_entry_review": "index.review.json",
-  "reviewed_at": "2026-09-26"
+  "reviewed_at": "2026-09-28"
 }

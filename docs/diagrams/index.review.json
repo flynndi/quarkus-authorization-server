@@ -7,21 +7,21 @@
   "dependencies": [
     {
       "file": "runtime-architecture.html",
-      "sha256": "9925994efd9f1af066b5f63f564217a6e8dc6eecd249e50d16850b3086ea4a48",
+      "sha256": "783864e953fd34f66218c81a8b794de996c47d1ed960d5c261446986e956edca",
       "bytes": 833790,
       "review": "runtime-architecture.review.json"
     },
     {
       "file": "runtime-architecture.en.html",
-      "sha256": "7597c66ea305d4c1395ab0eae01e02eeed68c83106c3cfeceeed97ce463d568b",
+      "sha256": "f0595b1ec69690f02c92ca5daa4bcca050284fdeae053ad343c0e460dd5dfabe",
       "bytes": 834384,
       "review": "runtime-architecture.en.review.json"
     }
   ],
   "implementation": "Standalone bilingual entry and VitePress architecture pages consume the delivered Archify HTML without changing the artifact bytes.",
   "evidence_kind": "supplementary-browser",
-  "reviewed_at": "2026-09-26",
-  "source_revision": "f439518e473a96b1982ced9ccf1d6b35e0bda200",
+  "reviewed_at": "2026-09-28",
+  "source_revision": "f8edc23584e7857f70189e8c975129bd14cc8d82",
   "browser": "Chrome via Playwright, local VitePress production preview",
   "containment": {
     "status": "passed",
@@ -50,46 +50,6 @@
         "surface": "site",
         "locale": "en",
         "viewport": {
-          "width": 1600,
-          "height": 1000
-        },
-        "outer": {
-          "width": 1600,
-          "height": 1000,
-          "scrollWidth": 1600,
-          "scrollHeight": 1000
-        },
-        "diagram": {
-          "width": 1600,
-          "height": 880,
-          "scrollWidth": 1600,
-          "scrollHeight": 880
-        }
-      },
-      {
-        "surface": "site",
-        "locale": "en",
-        "viewport": {
-          "width": 1920,
-          "height": 1080
-        },
-        "outer": {
-          "width": 1920,
-          "height": 1080,
-          "scrollWidth": 1920,
-          "scrollHeight": 1080
-        },
-        "diagram": {
-          "width": 1920,
-          "height": 960,
-          "scrollWidth": 1920,
-          "scrollHeight": 960
-        }
-      },
-      {
-        "surface": "site",
-        "locale": "en",
-        "viewport": {
           "width": 2048,
           "height": 1320
         },
@@ -104,86 +64,6 @@
           "height": 1200,
           "scrollWidth": 2048,
           "scrollHeight": 1200
-        }
-      },
-      {
-        "surface": "standalone",
-        "locale": "en",
-        "viewport": {
-          "width": 1440,
-          "height": 900
-        },
-        "outer": {
-          "width": 1440,
-          "height": 900,
-          "scrollWidth": 1440,
-          "scrollHeight": 900
-        },
-        "diagram": {
-          "width": 1440,
-          "height": 900,
-          "scrollWidth": 1440,
-          "scrollHeight": 900
-        }
-      },
-      {
-        "surface": "standalone",
-        "locale": "en",
-        "viewport": {
-          "width": 1600,
-          "height": 1000
-        },
-        "outer": {
-          "width": 1600,
-          "height": 1000,
-          "scrollWidth": 1600,
-          "scrollHeight": 1000
-        },
-        "diagram": {
-          "width": 1600,
-          "height": 1000,
-          "scrollWidth": 1600,
-          "scrollHeight": 1000
-        }
-      },
-      {
-        "surface": "standalone",
-        "locale": "en",
-        "viewport": {
-          "width": 1920,
-          "height": 1080
-        },
-        "outer": {
-          "width": 1920,
-          "height": 1080,
-          "scrollWidth": 1920,
-          "scrollHeight": 1080
-        },
-        "diagram": {
-          "width": 1920,
-          "height": 1080,
-          "scrollWidth": 1920,
-          "scrollHeight": 1080
-        }
-      },
-      {
-        "surface": "standalone",
-        "locale": "en",
-        "viewport": {
-          "width": 2048,
-          "height": 1320
-        },
-        "outer": {
-          "width": 2048,
-          "height": 1320,
-          "scrollWidth": 2048,
-          "scrollHeight": 1320
-        },
-        "diagram": {
-          "width": 2048,
-          "height": 1320,
-          "scrollWidth": 2048,
-          "scrollHeight": 1320
         }
       },
       {
@@ -210,46 +90,6 @@
         "surface": "site",
         "locale": "zh-CN",
         "viewport": {
-          "width": 1600,
-          "height": 1000
-        },
-        "outer": {
-          "width": 1600,
-          "height": 1000,
-          "scrollWidth": 1600,
-          "scrollHeight": 1000
-        },
-        "diagram": {
-          "width": 1600,
-          "height": 880,
-          "scrollWidth": 1600,
-          "scrollHeight": 880
-        }
-      },
-      {
-        "surface": "site",
-        "locale": "zh-CN",
-        "viewport": {
-          "width": 1920,
-          "height": 1080
-        },
-        "outer": {
-          "width": 1920,
-          "height": 1080,
-          "scrollWidth": 1920,
-          "scrollHeight": 1080
-        },
-        "diagram": {
-          "width": 1920,
-          "height": 960,
-          "scrollWidth": 1920,
-          "scrollHeight": 960
-        }
-      },
-      {
-        "surface": "site",
-        "locale": "zh-CN",
-        "viewport": {
           "width": 2048,
           "height": 1320
         },
@@ -264,6 +104,46 @@
           "height": 1200,
           "scrollWidth": 2048,
           "scrollHeight": 1200
+        }
+      },
+      {
+        "surface": "standalone",
+        "locale": "en",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "outer": {
+          "width": 1440,
+          "height": 900,
+          "scrollWidth": 1440,
+          "scrollHeight": 900
+        },
+        "diagram": {
+          "width": 1440,
+          "height": 900,
+          "scrollWidth": 1440,
+          "scrollHeight": 900
+        }
+      },
+      {
+        "surface": "standalone",
+        "locale": "en",
+        "viewport": {
+          "width": 2048,
+          "height": 1320
+        },
+        "outer": {
+          "width": 2048,
+          "height": 1320,
+          "scrollWidth": 2048,
+          "scrollHeight": 1320
+        },
+        "diagram": {
+          "width": 2048,
+          "height": 1320,
+          "scrollWidth": 2048,
+          "scrollHeight": 1320
         }
       },
       {
@@ -290,46 +170,6 @@
         "surface": "standalone",
         "locale": "zh-CN",
         "viewport": {
-          "width": 1600,
-          "height": 1000
-        },
-        "outer": {
-          "width": 1600,
-          "height": 1000,
-          "scrollWidth": 1600,
-          "scrollHeight": 1000
-        },
-        "diagram": {
-          "width": 1600,
-          "height": 1000,
-          "scrollWidth": 1600,
-          "scrollHeight": 1000
-        }
-      },
-      {
-        "surface": "standalone",
-        "locale": "zh-CN",
-        "viewport": {
-          "width": 1920,
-          "height": 1080
-        },
-        "outer": {
-          "width": 1920,
-          "height": 1080,
-          "scrollWidth": 1920,
-          "scrollHeight": 1080
-        },
-        "diagram": {
-          "width": 1920,
-          "height": 1080,
-          "scrollWidth": 1920,
-          "scrollHeight": 1080
-        }
-      },
-      {
-        "surface": "standalone",
-        "locale": "zh-CN",
-        "viewport": {
           "width": 2048,
           "height": 1320
         },
@@ -347,21 +187,19 @@
         }
       }
     ],
-    "note": "Measurements were taken after the responsive layout settled; selected-node zoom is separate from the initial overview."
+    "note": "Site and standalone initial views measured at 1440x900 and 2048x1320 in both languages. Per-artifact automated receipts also cover 1600x1000 and 1920x1080."
   },
   "interaction_checks": [
+    "en/site: About links to f8edc23584e7857f70189e8c975129bd14cc8d82.",
     "en/site: all 11 nodes open, expose the expected 33 fixed-revision source links, and close.",
-    "en/standalone: all 11 nodes open, expose the expected 33 fixed-revision source links, and close.",
+    "zh-CN/site: About links to f8edc23584e7857f70189e8c975129bd14cc8d82.",
     "zh-CN/site: all 11 nodes open, expose the expected 33 fixed-revision source links, and close.",
-    "zh-CN/standalone: all 11 nodes open, expose the expected 33 fixed-revision source links, and close.",
-    "Site node finder locates OAuth2TokenGenerator; selection exposes source details and synchronizes token-issuance focus to the outer URL.",
-    "VitePress theme control synchronizes dark mode; the site language menu loads the Chinese diagram with dark mode. The token node can be selected again and shows the updated sources.",
-    "About points to f439518 and provides per-language JSON and standalone viewer links.",
-    "The api-boundary section anchor opens the updated Markdown overview, including public TokenGrantHandler and internal ProtocolExecutor package names.",
-    "The standalone viewer defaults to English; its top-right language switch preserves the selected client repository and dark theme, with the moved client package link. Closing details clears the outer focus URL."
+    "en/standalone: all 11 nodes open, expose the expected 33 fixed-revision source links, and close.",
+    "Standalone language switch preserves selected client repository and dark theme with updated source links.",
+    "zh-CN/standalone: all 11 nodes open, expose the expected 33 fixed-revision source links, and close."
   ],
   "visual_review": "passed for the recorded scope",
-  "visual_review_scope": "1440x900 English site and Chinese standalone initial overviews; English light and Chinese dark token details; Chinese package-boundary Markdown overview. The separate per-language receipts cover both themes at 1440x900 and 2048x1320.",
+  "visual_review_scope": "1440x900 English site and Chinese standalone build-wiring source details were inspected. Separate per-language receipts cover initial overviews in both themes at 1440x900 and 2048x1320.",
   "website_sources": [
     {
       "path": "docs/.vitepress/theme/components/ArchitecturePage.vue",
@@ -375,18 +213,18 @@
     },
     {
       "path": "docs/guide/architecture.md",
-      "sha256": "d9c9fc4503e5ff55caf6896dbc7422f483340c4e6ce97c3d1d1cb6984eeebdaf",
-      "bytes": 6784
+      "sha256": "d7f1587c6431ce3092570681406d171a5cb3d89e1596dfcfd1fd3b92417d94b6",
+      "bytes": 6703
     },
     {
       "path": "docs/zh/guide/architecture.md",
-      "sha256": "cad960c3dadeb1a2f35b3678a66bdd460ce7ce9dc0f8188636edc0b9fa3c6f19",
-      "bytes": 6132
+      "sha256": "0b9c2ddf37a2eb38ad99d799df8057ab48ca2dc15cd17bd9fb3d80315cb23848",
+      "bytes": 6072
     }
   ],
   "console_errors": [],
   "observations": [
-    "The standalone language switch preserves focus. Switching the VitePress site language returned to #diagram; source details can be selected again. This existing site behavior was recorded without changing the viewer integration."
+    "The updated fixed revision and current Processor line ranges appear in the node source details. Both the site and standalone viewer consume the delivered artifact bytes."
   ],
   "limits": [
     "Supplementary integration checks are distinct from the automated Archify visual-check receipts.",

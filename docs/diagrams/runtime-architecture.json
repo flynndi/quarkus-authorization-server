@@ -7,7 +7,7 @@
     "quality_profile": "showcase",
     "repository": {
       "url": "https://github.com/flynndi/quarkus-authorization-server",
-      "revision": "f439518e473a96b1982ced9ccf1d6b35e0bda200"
+      "revision": "f8edc23584e7857f70189e8c975129bd14cc8d82"
     }
   },
   "components": [
@@ -28,14 +28,14 @@
       "sources": [
         {
           "path": "deployment/src/main/java/io/quarkiverse/authorization/server/deployment/AuthorizationServerProcessor.java",
-          "line": 162,
-          "end_line": 229,
+          "line": 133,
+          "end_line": 178,
           "label": "注册运行期 Bean"
         },
         {
           "path": "deployment/src/main/java/io/quarkiverse/authorization/server/deployment/AuthorizationServerProcessor.java",
-          "line": 496,
-          "end_line": 591,
+          "line": 340,
+          "end_line": 434,
           "label": "安装协议路由并录制启动逻辑"
         },
         {

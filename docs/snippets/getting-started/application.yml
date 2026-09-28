@@ -1,0 +1,37 @@
+quarkus:
+  # Authorization server: register a confidential client and enable browser login.
+  authorization-server:
+    issuer: http://localhost:8080
+    default-login-page-enabled: true
+    oidc:
+      enabled: true
+    clients:
+      quickstart-client:
+        client-name: Quickstart
+        client-authentication-methods: client_secret_basic
+        # Bcrypt hash of the demo client secret: quickstart-secret.
+        client-secret: '$2a$10$ADV8VEBZhxueuLTSw6i9LO7efLWg25a1PW1RH93GlPbFng/E3v5tO'
+        authorization-grant-types: authorization_code
+        redirect-uris: http://localhost:8080/callback.html
+        scopes: message.read
+        require-proof-key: false
+        require-authorization-consent: true
+  http:
+    auth:
+      form:
+        enabled: true
+      permission:
+        resources:
+          paths: /api/*
+          policy: authenticated
+          auth-mechanism: Bearer
+  # Resource server: validate tokens issued by this same application.
+  oidc:
+    application-type: service
+    auth-server-url: http://localhost:8080
+    connection-timeout: 1S
+    connection-retry-count: 1
+    token:
+      audience: quickstart-client
+      allow-jwt-introspection: false
+      allow-opaque-token-introspection: false

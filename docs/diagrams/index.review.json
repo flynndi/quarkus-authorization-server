@@ -1,0 +1,396 @@
+{
+  "output": "index.html",
+  "artifact": {
+    "sha256": "c3172fc1d132c34f6bdd59eeba6a84ec2e200d9d549d7fcff219763f53a14fa2",
+    "bytes": 6275
+  },
+  "dependencies": [
+    {
+      "file": "runtime-architecture.html",
+      "sha256": "9925994efd9f1af066b5f63f564217a6e8dc6eecd249e50d16850b3086ea4a48",
+      "bytes": 833790,
+      "review": "runtime-architecture.review.json"
+    },
+    {
+      "file": "runtime-architecture.en.html",
+      "sha256": "7597c66ea305d4c1395ab0eae01e02eeed68c83106c3cfeceeed97ce463d568b",
+      "bytes": 834384,
+      "review": "runtime-architecture.en.review.json"
+    }
+  ],
+  "implementation": "Standalone bilingual entry and VitePress architecture pages consume the delivered Archify HTML without changing the artifact bytes.",
+  "evidence_kind": "supplementary-browser",
+  "reviewed_at": "2026-09-26",
+  "source_revision": "f439518e473a96b1982ced9ccf1d6b35e0bda200",
+  "browser": "Chrome via Playwright, local VitePress production preview",
+  "containment": {
+    "status": "passed",
+    "measurements": [
+      {
+        "surface": "site",
+        "locale": "en",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "outer": {
+          "width": 1440,
+          "height": 900,
+          "scrollWidth": 1440,
+          "scrollHeight": 900
+        },
+        "diagram": {
+          "width": 1440,
+          "height": 780,
+          "scrollWidth": 1440,
+          "scrollHeight": 780
+        }
+      },
+      {
+        "surface": "site",
+        "locale": "en",
+        "viewport": {
+          "width": 1600,
+          "height": 1000
+        },
+        "outer": {
+          "width": 1600,
+          "height": 1000,
+          "scrollWidth": 1600,
+          "scrollHeight": 1000
+        },
+        "diagram": {
+          "width": 1600,
+          "height": 880,
+          "scrollWidth": 1600,
+          "scrollHeight": 880
+        }
+      },
+      {
+        "surface": "site",
+        "locale": "en",
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "outer": {
+          "width": 1920,
+          "height": 1080,
+          "scrollWidth": 1920,
+          "scrollHeight": 1080
+        },
+        "diagram": {
+          "width": 1920,
+          "height": 960,
+          "scrollWidth": 1920,
+          "scrollHeight": 960
+        }
+      },
+      {
+        "surface": "site",
+        "locale": "en",
+        "viewport": {
+          "width": 2048,
+          "height": 1320
+        },
+        "outer": {
+          "width": 2048,
+          "height": 1320,
+          "scrollWidth": 2048,
+          "scrollHeight": 1320
+        },
+        "diagram": {
+          "width": 2048,
+          "height": 1200,
+          "scrollWidth": 2048,
+          "scrollHeight": 1200
+        }
+      },
+      {
+        "surface": "standalone",
+        "locale": "en",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "outer": {
+          "width": 1440,
+          "height": 900,
+          "scrollWidth": 1440,
+          "scrollHeight": 900
+        },
+        "diagram": {
+          "width": 1440,
+          "height": 900,
+          "scrollWidth": 1440,
+          "scrollHeight": 900
+        }
+      },
+      {
+        "surface": "standalone",
+        "locale": "en",
+        "viewport": {
+          "width": 1600,
+          "height": 1000
+        },
+        "outer": {
+          "width": 1600,
+          "height": 1000,
+          "scrollWidth": 1600,
+          "scrollHeight": 1000
+        },
+        "diagram": {
+          "width": 1600,
+          "height": 1000,
+          "scrollWidth": 1600,
+          "scrollHeight": 1000
+        }
+      },
+      {
+        "surface": "standalone",
+        "locale": "en",
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "outer": {
+          "width": 1920,
+          "height": 1080,
+          "scrollWidth": 1920,
+          "scrollHeight": 1080
+        },
+        "diagram": {
+          "width": 1920,
+          "height": 1080,
+          "scrollWidth": 1920,
+          "scrollHeight": 1080
+        }
+      },
+      {
+        "surface": "standalone",
+        "locale": "en",
+        "viewport": {
+          "width": 2048,
+          "height": 1320
+        },
+        "outer": {
+          "width": 2048,
+          "height": 1320,
+          "scrollWidth": 2048,
+          "scrollHeight": 1320
+        },
+        "diagram": {
+          "width": 2048,
+          "height": 1320,
+          "scrollWidth": 2048,
+          "scrollHeight": 1320
+        }
+      },
+      {
+        "surface": "site",
+        "locale": "zh-CN",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "outer": {
+          "width": 1440,
+          "height": 900,
+          "scrollWidth": 1440,
+          "scrollHeight": 900
+        },
+        "diagram": {
+          "width": 1440,
+          "height": 780,
+          "scrollWidth": 1440,
+          "scrollHeight": 780
+        }
+      },
+      {
+        "surface": "site",
+        "locale": "zh-CN",
+        "viewport": {
+          "width": 1600,
+          "height": 1000
+        },
+        "outer": {
+          "width": 1600,
+          "height": 1000,
+          "scrollWidth": 1600,
+          "scrollHeight": 1000
+        },
+        "diagram": {
+          "width": 1600,
+          "height": 880,
+          "scrollWidth": 1600,
+          "scrollHeight": 880
+        }
+      },
+      {
+        "surface": "site",
+        "locale": "zh-CN",
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "outer": {
+          "width": 1920,
+          "height": 1080,
+          "scrollWidth": 1920,
+          "scrollHeight": 1080
+        },
+        "diagram": {
+          "width": 1920,
+          "height": 960,
+          "scrollWidth": 1920,
+          "scrollHeight": 960
+        }
+      },
+      {
+        "surface": "site",
+        "locale": "zh-CN",
+        "viewport": {
+          "width": 2048,
+          "height": 1320
+        },
+        "outer": {
+          "width": 2048,
+          "height": 1320,
+          "scrollWidth": 2048,
+          "scrollHeight": 1320
+        },
+        "diagram": {
+          "width": 2048,
+          "height": 1200,
+          "scrollWidth": 2048,
+          "scrollHeight": 1200
+        }
+      },
+      {
+        "surface": "standalone",
+        "locale": "zh-CN",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "outer": {
+          "width": 1440,
+          "height": 900,
+          "scrollWidth": 1440,
+          "scrollHeight": 900
+        },
+        "diagram": {
+          "width": 1440,
+          "height": 900,
+          "scrollWidth": 1440,
+          "scrollHeight": 900
+        }
+      },
+      {
+        "surface": "standalone",
+        "locale": "zh-CN",
+        "viewport": {
+          "width": 1600,
+          "height": 1000
+        },
+        "outer": {
+          "width": 1600,
+          "height": 1000,
+          "scrollWidth": 1600,
+          "scrollHeight": 1000
+        },
+        "diagram": {
+          "width": 1600,
+          "height": 1000,
+          "scrollWidth": 1600,
+          "scrollHeight": 1000
+        }
+      },
+      {
+        "surface": "standalone",
+        "locale": "zh-CN",
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "outer": {
+          "width": 1920,
+          "height": 1080,
+          "scrollWidth": 1920,
+          "scrollHeight": 1080
+        },
+        "diagram": {
+          "width": 1920,
+          "height": 1080,
+          "scrollWidth": 1920,
+          "scrollHeight": 1080
+        }
+      },
+      {
+        "surface": "standalone",
+        "locale": "zh-CN",
+        "viewport": {
+          "width": 2048,
+          "height": 1320
+        },
+        "outer": {
+          "width": 2048,
+          "height": 1320,
+          "scrollWidth": 2048,
+          "scrollHeight": 1320
+        },
+        "diagram": {
+          "width": 2048,
+          "height": 1320,
+          "scrollWidth": 2048,
+          "scrollHeight": 1320
+        }
+      }
+    ],
+    "note": "Measurements were taken after the responsive layout settled; selected-node zoom is separate from the initial overview."
+  },
+  "interaction_checks": [
+    "en/site: all 11 nodes open, expose the expected 33 fixed-revision source links, and close.",
+    "en/standalone: all 11 nodes open, expose the expected 33 fixed-revision source links, and close.",
+    "zh-CN/site: all 11 nodes open, expose the expected 33 fixed-revision source links, and close.",
+    "zh-CN/standalone: all 11 nodes open, expose the expected 33 fixed-revision source links, and close.",
+    "Site node finder locates OAuth2TokenGenerator; selection exposes source details and synchronizes token-issuance focus to the outer URL.",
+    "VitePress theme control synchronizes dark mode; the site language menu loads the Chinese diagram with dark mode. The token node can be selected again and shows the updated sources.",
+    "About points to f439518 and provides per-language JSON and standalone viewer links.",
+    "The api-boundary section anchor opens the updated Markdown overview, including public TokenGrantHandler and internal ProtocolExecutor package names.",
+    "The standalone viewer defaults to English; its top-right language switch preserves the selected client repository and dark theme, with the moved client package link. Closing details clears the outer focus URL."
+  ],
+  "visual_review": "passed for the recorded scope",
+  "visual_review_scope": "1440x900 English site and Chinese standalone initial overviews; English light and Chinese dark token details; Chinese package-boundary Markdown overview. The separate per-language receipts cover both themes at 1440x900 and 2048x1320.",
+  "website_sources": [
+    {
+      "path": "docs/.vitepress/theme/components/ArchitecturePage.vue",
+      "sha256": "65789619537242c23ea5d3938856307814b59f2259fcd09c5e4642279278a64a",
+      "bytes": 7993
+    },
+    {
+      "path": "docs/.vitepress/theme/components/architecture-viewer.css",
+      "sha256": "9da6113419fc9e855409b14a5bf2d9225cca092c5d7c23445bd0b9e98327f72e",
+      "bytes": 291
+    },
+    {
+      "path": "docs/guide/architecture.md",
+      "sha256": "d9c9fc4503e5ff55caf6896dbc7422f483340c4e6ce97c3d1d1cb6984eeebdaf",
+      "bytes": 6784
+    },
+    {
+      "path": "docs/zh/guide/architecture.md",
+      "sha256": "cad960c3dadeb1a2f35b3678a66bdd460ce7ce9dc0f8188636edc0b9fa3c6f19",
+      "bytes": 6132
+    }
+  ],
+  "console_errors": [],
+  "observations": [
+    "The standalone language switch preserves focus. Switching the VitePress site language returned to #diagram; source details can be selected again. This existing site behavior was recorded without changing the viewer integration."
+  ],
+  "limits": [
+    "Supplementary integration checks are distinct from the automated Archify visual-check receipts.",
+    "No Cloudflare deployment, remote GitHub accessibility, export downloads, OAuth flows or JVM/native execution were verified.",
+    "The entry requires both language HTML files in the same directory."
+  ]
+}

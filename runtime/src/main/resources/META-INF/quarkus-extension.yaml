@@ -1,0 +1,16 @@
+name: "Authorization Server"
+artifactId: "quarkus-authorization-server"
+description: "Authorization server support for Quarkus"
+metadata:
+  config:
+    - "quarkus.authorization-server"
+  keywords:
+    - "authorization-server"
+    - "oauth2"
+    - "oidc"
+    - "security"
+  categories:
+    - "security"
+  status: "preview"
+  scm-url: "https://github.com/flynndi/quarkus-authorization-server"
+  minimum-java-version: "21"

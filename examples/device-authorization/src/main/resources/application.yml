@@ -1,0 +1,50 @@
+quarkus:
+  http:
+    host: 127.0.0.1
+    auth:
+      proactive: false
+      session:
+        encryption-key: device-authorization-browser-test-key
+      form:
+        enabled: true
+        login-page: /auth/login
+        error-page: /auth/login?error=true
+  datasource:
+    db-kind: h2
+    username: sa
+    password: sa
+    jdbc:
+      url: "jdbc:h2:mem:device-authorization;DB_CLOSE_DELAY=-1"
+      max-size: 16
+    devservices:
+      enabled: false
+  native:
+    resources:
+      includes: test-private-key.pem,test-public-key.pem
+  authorization-server:
+    default-login-page-enabled: true
+    issuer: "${AUTHORIZATION_SERVER_ISSUER:http://localhost:${quarkus.http.port:8080}}"
+    oidc:
+      enabled: true
+    signing:
+      key-id: device-authorization-test-key
+      private-key-location: classpath:test-private-key.pem
+      public-key-location: classpath:test-public-key.pem
+  oidc:
+    application-type: service
+    tenant-paths: /api/*
+    auth-server-url: "${quarkus.authorization-server.issuer}"
+    discovery-enabled: true
+    connection-timeout: 1S
+    connection-retry-count: 1
+    allow-token-introspection-cache: false
+    token:
+      lifespan-grace: 0
+      allow-jwt-introspection: false
+      audience: public-device
+      allow-opaque-token-introspection: false
+
+"%test":
+  quarkus:
+    authorization-server:
+      issuer: http://localhost:${quarkus.http.test-port:8081}

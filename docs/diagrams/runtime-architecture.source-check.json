@@ -1,0 +1,362 @@
+{
+  "status": "passed",
+  "source_revision": "f439518e473a96b1982ced9ccf1d6b35e0bda200",
+  "components": 11,
+  "connections": 10,
+  "source_references_per_language": 33,
+  "bilingual_topology_layout_and_source_locations": "identical",
+  "checks": [
+    "Each source exists in both the fixed Git revision and the working tree with identical bytes.",
+    "Every cited line range exists at that revision.",
+    "Each Java package declaration matches the path; each type declaration matches the filename.",
+    "Project types named in diagram labels and cards resolve uniquely to their current package."
+  ],
+  "limits": [
+    "External Quarkus API names are framework references, not extension-owned classes.",
+    "Call relationships were reviewed from source; this is not OAuth runtime acceptance."
+  ],
+  "project_types_in_diagram": [
+    {
+      "name": "AuthorizationServerProcessor",
+      "type": "io.quarkiverse.authorization.server.deployment.AuthorizationServerProcessor",
+      "path": "deployment/src/main/java/io/quarkiverse/authorization/server/deployment/AuthorizationServerProcessor.java"
+    },
+    {
+      "name": "OAuth2AuthorizationConsentService",
+      "type": "io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationConsentService",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/authorization/OAuth2AuthorizationConsentService.java"
+    },
+    {
+      "name": "OAuth2AuthorizationService",
+      "type": "io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationService",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/authorization/OAuth2AuthorizationService.java"
+    },
+    {
+      "name": "OAuth2TokenCustomizer",
+      "type": "io.quarkiverse.authorization.server.token.OAuth2TokenCustomizer",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/token/OAuth2TokenCustomizer.java"
+    },
+    {
+      "name": "OAuth2TokenEndpointHandler",
+      "type": "io.quarkiverse.authorization.server.runtime.web.OAuth2TokenEndpointHandler",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/web/OAuth2TokenEndpointHandler.java"
+    },
+    {
+      "name": "OAuth2TokenGenerator",
+      "type": "io.quarkiverse.authorization.server.token.OAuth2TokenGenerator",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/token/OAuth2TokenGenerator.java"
+    },
+    {
+      "name": "ProtocolExecutor",
+      "type": "io.quarkiverse.authorization.server.runtime.web.ProtocolExecutor",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/web/ProtocolExecutor.java"
+    },
+    {
+      "name": "RegisteredClient",
+      "type": "io.quarkiverse.authorization.server.client.RegisteredClient",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/client/RegisteredClient.java"
+    },
+    {
+      "name": "RegisteredClientRepository",
+      "type": "io.quarkiverse.authorization.server.client.RegisteredClientRepository",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/client/RegisteredClientRepository.java"
+    },
+    {
+      "name": "TokenGrantHandler",
+      "type": "io.quarkiverse.authorization.server.web.TokenGrantHandler",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/web/TokenGrantHandler.java"
+    }
+  ],
+  "references": [
+    {
+      "component": "build-wiring",
+      "path": "deployment/src/main/java/io/quarkiverse/authorization/server/deployment/AuthorizationServerProcessor.java",
+      "line": 162,
+      "end_line": 229,
+      "source_sha256": "5309d1e960fa123d901e761191695e4f66e6a22ace7b8bf06e1ae744830f8c15",
+      "type": "io.quarkiverse.authorization.server.deployment.AuthorizationServerProcessor",
+      "boundary": "internal"
+    },
+    {
+      "component": "build-wiring",
+      "path": "deployment/src/main/java/io/quarkiverse/authorization/server/deployment/AuthorizationServerProcessor.java",
+      "line": 496,
+      "end_line": 591,
+      "source_sha256": "5309d1e960fa123d901e761191695e4f66e6a22ace7b8bf06e1ae744830f8c15",
+      "type": "io.quarkiverse.authorization.server.deployment.AuthorizationServerProcessor",
+      "boundary": "internal"
+    },
+    {
+      "component": "build-wiring",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/AuthorizationServerRecorder.java",
+      "line": 127,
+      "end_line": 161,
+      "source_sha256": "3b1fa174872b4aa9bdf48728fc277177a4a10c6f32a811708dc02d972f349268",
+      "type": "io.quarkiverse.authorization.server.runtime.AuthorizationServerRecorder",
+      "boundary": "internal"
+    },
+    {
+      "component": "oauth-clients",
+      "path": "examples/authorization-code/src/main/resources/application.yml",
+      "line": 27,
+      "end_line": 32,
+      "source_sha256": "f651b88f9cb2cf2dfef4cfb6935bf4b07e7251cd4f33ba09e6cd4f01326ed5ce"
+    },
+    {
+      "component": "oauth-clients",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/web/OAuth2TokenEndpointHandler.java",
+      "line": 63,
+      "end_line": 119,
+      "source_sha256": "a420940b79a287e00101bf1597c9b12513dcce17390a929bac4e4b150a4c3493",
+      "type": "io.quarkiverse.authorization.server.runtime.web.OAuth2TokenEndpointHandler",
+      "boundary": "internal"
+    },
+    {
+      "component": "oauth-clients",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/authorizationcode/web/OAuth2AuthorizationEndpointHandler.java",
+      "line": 74,
+      "end_line": 121,
+      "source_sha256": "d3491781577f43ef8cdf206f37ddabe67abac2218e4ffce33e112a6ee55e1b78",
+      "type": "io.quarkiverse.authorization.server.runtime.grant.authorizationcode.web.OAuth2AuthorizationEndpointHandler",
+      "boundary": "internal"
+    },
+    {
+      "component": "resource-api",
+      "path": "examples/authorization-code/src/main/java/io/quarkiverse/authorization/server/example/authorizationcode/resourceserver/MessageResource.java",
+      "line": 14,
+      "end_line": 26,
+      "source_sha256": "91e68ea3a33cc9eeec8e61b0bf26dfcac28eae4f975cae77667e2a62f448db91",
+      "type": "io.quarkiverse.authorization.server.example.authorizationcode.resourceserver.MessageResource",
+      "boundary": "example"
+    },
+    {
+      "component": "resource-api",
+      "path": "examples/authorization-code/src/main/resources/application.yml",
+      "line": 15,
+      "end_line": 18,
+      "source_sha256": "f651b88f9cb2cf2dfef4cfb6935bf4b07e7251cd4f33ba09e6cd4f01326ed5ce"
+    },
+    {
+      "component": "resource-api",
+      "path": "examples/authorization-code/src/main/resources/application.yml",
+      "line": 33,
+      "end_line": 43,
+      "source_sha256": "f651b88f9cb2cf2dfef4cfb6935bf4b07e7251cd4f33ba09e6cd4f01326ed5ce"
+    },
+    {
+      "component": "client-identity",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/client/web/OAuth2ClientAuthenticationMechanism.java",
+      "line": 69,
+      "end_line": 119,
+      "source_sha256": "46cf69239b1e912ba69bb3b92d63b6af0579df7b2fd833791138c9b09351e50e",
+      "type": "io.quarkiverse.authorization.server.runtime.client.web.OAuth2ClientAuthenticationMechanism",
+      "boundary": "internal"
+    },
+    {
+      "component": "client-identity",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/client/authentication/ClientSecretAuthenticationProvider.java",
+      "line": 61,
+      "end_line": 98,
+      "source_sha256": "6a7effdcf060f297534880dc78f82fdbf6c44ff40a82fa847159c32de13d72dc",
+      "type": "io.quarkiverse.authorization.server.runtime.client.authentication.ClientSecretAuthenticationProvider",
+      "boundary": "internal"
+    },
+    {
+      "component": "client-identity",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/client/ClientSecretVerifier.java",
+      "line": 6,
+      "end_line": 9,
+      "source_sha256": "5e34492aeefbbdad49b4f9063223c8ea615ddbbae0591950a56bc89937bd9399",
+      "type": "io.quarkiverse.authorization.server.client.ClientSecretVerifier",
+      "boundary": "public"
+    },
+    {
+      "component": "http-security",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/web/OAuth2TokenEndpointSecurityConfiguration.java",
+      "line": 25,
+      "end_line": 55,
+      "source_sha256": "7141a419d2b80337dde5429fbc8371ec93a01233ff362ff592dab913941c2781",
+      "type": "io.quarkiverse.authorization.server.runtime.web.OAuth2TokenEndpointSecurityConfiguration",
+      "boundary": "internal"
+    },
+    {
+      "component": "http-security",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/authorizationcode/web/OAuth2AuthorizationEndpointSecurityConfiguration.java",
+      "line": 29,
+      "end_line": 40,
+      "source_sha256": "b2f180d982ebf5ccaaf8f17562a09f000f0056b9ef020d376ff39b9f1f18b841",
+      "type": "io.quarkiverse.authorization.server.runtime.grant.authorizationcode.web.OAuth2AuthorizationEndpointSecurityConfiguration",
+      "boundary": "internal"
+    },
+    {
+      "component": "http-security",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/authorizationcode/authorization/AuthorizationRequestProcessor.java",
+      "line": 165,
+      "end_line": 258,
+      "source_sha256": "2d10b789ecd5f5f8debf68439cc3b0dc927a50da51ea18f536309c85a3c56bb7",
+      "type": "io.quarkiverse.authorization.server.runtime.grant.authorizationcode.authorization.AuthorizationRequestProcessor",
+      "boundary": "internal"
+    },
+    {
+      "component": "registered-clients",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/client/RegisteredClientRepository.java",
+      "line": 9,
+      "end_line": 35,
+      "source_sha256": "65c192edf8aff391c559623dee78d97274ef385611ab762bc888c4a0292cfc9b",
+      "type": "io.quarkiverse.authorization.server.client.RegisteredClientRepository",
+      "boundary": "public"
+    },
+    {
+      "component": "registered-clients",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/config/RegisteredClientRepositoryProducer.java",
+      "line": 26,
+      "end_line": 58,
+      "source_sha256": "90dbdfb6fff80d10a402772513bdb5d4fde0108315273c2cad5cacf577ff456e",
+      "type": "io.quarkiverse.authorization.server.runtime.config.RegisteredClientRepositoryProducer",
+      "boundary": "internal"
+    },
+    {
+      "component": "registered-clients",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/jdbc/JdbcRegisteredClientRepository.java",
+      "line": 39,
+      "end_line": 83,
+      "source_sha256": "e68d038bbbb281d989dc7e53058742ab943cc1e37fb6ee481c4c1a2bd1987769",
+      "type": "io.quarkiverse.authorization.server.jdbc.JdbcRegisteredClientRepository",
+      "boundary": "public"
+    },
+    {
+      "component": "application-spi",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/package-info.java",
+      "line": 1,
+      "end_line": 6,
+      "source_sha256": "8d74c6c0295f2a5b86bc0288fd273598c9f77e9baa73c6953016a32869a5564b",
+      "package": "io.quarkiverse.authorization.server"
+    },
+    {
+      "component": "application-spi",
+      "path": "examples/authorization-code/src/main/java/io/quarkiverse/authorization/server/example/authorizationcode/authorizationserver/config/ResourceOwnerIdentityProviders.java",
+      "line": 19,
+      "end_line": 81,
+      "source_sha256": "b8cbba0ca7cb4dcf015441b9421d6e31f4cc57019313ff3672f8f200f0ed638b",
+      "type": "io.quarkiverse.authorization.server.example.authorizationcode.authorizationserver.config.ResourceOwnerIdentityProviders",
+      "boundary": "example"
+    },
+    {
+      "component": "application-spi",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/token/OAuth2TokenCustomizer.java",
+      "line": 7,
+      "end_line": 10,
+      "source_sha256": "6a4823a81b4fd2a1f9ec287c5e2e82c6aa9cc57e01869ad8fd5985aa736b6325",
+      "type": "io.quarkiverse.authorization.server.token.OAuth2TokenCustomizer",
+      "boundary": "public"
+    },
+    {
+      "component": "protocol-flows",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/web/TokenGrantHandler.java",
+      "line": 9,
+      "end_line": 15,
+      "source_sha256": "f5d22827db594c6f58ecca5f2f87ac650187931fdf78f5095ae6547ae6a32c3e",
+      "type": "io.quarkiverse.authorization.server.web.TokenGrantHandler",
+      "boundary": "public"
+    },
+    {
+      "component": "protocol-flows",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/authorizationcode/web/AuthorizationCodeGrantHandler.java",
+      "line": 19,
+      "end_line": 53,
+      "source_sha256": "81bbcc3e2be6dc1c890bf7cc0ce87da4e19a455f2a7fdc524fe5a3e487d754e2",
+      "type": "io.quarkiverse.authorization.server.runtime.grant.authorizationcode.web.AuthorizationCodeGrantHandler",
+      "boundary": "internal"
+    },
+    {
+      "component": "protocol-flows",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/web/ProtocolExecutor.java",
+      "line": 18,
+      "end_line": 40,
+      "source_sha256": "3201837d3e0e40b12a5f581a8fd5eb78a0815f1a92b034bea40f193c1fd9fef8",
+      "type": "io.quarkiverse.authorization.server.runtime.web.ProtocolExecutor",
+      "boundary": "internal"
+    },
+    {
+      "component": "authorizations",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/authorization/OAuth2AuthorizationService.java",
+      "line": 8,
+      "end_line": 17,
+      "source_sha256": "a49a0b6ad03a5568ed797a1fe3730a7cc1abf3b2b8af339343a72c3312014ea8",
+      "type": "io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationService",
+      "boundary": "public"
+    },
+    {
+      "component": "authorizations",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/authorizationcode/exchange/AuthorizationCodeExchange.java",
+      "line": 136,
+      "end_line": 215,
+      "source_sha256": "afb85a06563a77397726b989d102874e1aa8d87bb645a5f870f58b0f7346bb0c",
+      "type": "io.quarkiverse.authorization.server.runtime.grant.authorizationcode.exchange.AuthorizationCodeExchange",
+      "boundary": "internal"
+    },
+    {
+      "component": "authorizations",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/jdbc/JdbcOAuth2AuthorizationService.java",
+      "line": 46,
+      "end_line": 85,
+      "source_sha256": "315432d4fe1ef0ca0eb146fbac0f9b30af5f6beaba964efe1b7aab89438f51e7",
+      "type": "io.quarkiverse.authorization.server.jdbc.JdbcOAuth2AuthorizationService",
+      "boundary": "public"
+    },
+    {
+      "component": "token-issuance",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/token/OAuth2TokenGenerator.java",
+      "line": 14,
+      "end_line": 17,
+      "source_sha256": "e82b014ae3a9fd32e47927e6c50ce25a721dd54cd548c7aed5157a21c74d1c18",
+      "type": "io.quarkiverse.authorization.server.token.OAuth2TokenGenerator",
+      "boundary": "public"
+    },
+    {
+      "component": "token-issuance",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/config/OAuth2TokenGeneratorProducer.java",
+      "line": 28,
+      "end_line": 61,
+      "source_sha256": "211316f2e493f9597e84b117f25248e992648cf759c5a9ac875269d2d7378607",
+      "type": "io.quarkiverse.authorization.server.runtime.config.OAuth2TokenGeneratorProducer",
+      "boundary": "internal"
+    },
+    {
+      "component": "token-issuance",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/token/AuthorizationServerKeySource.java",
+      "line": 11,
+      "end_line": 28,
+      "source_sha256": "d746248c73eb05102caf890f7a22b0c76e1d9c9878622819dbf7565d994b19ae",
+      "type": "io.quarkiverse.authorization.server.token.AuthorizationServerKeySource",
+      "boundary": "public"
+    },
+    {
+      "component": "consents",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/authorization/OAuth2AuthorizationConsentService.java",
+      "line": 6,
+      "end_line": 13,
+      "source_sha256": "a47db0032b31f4aaab41814e3bba9f99d7547418deaf5df26a5969f9e68838cb",
+      "type": "io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationConsentService",
+      "boundary": "public"
+    },
+    {
+      "component": "consents",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/authorizationcode/authorization/AuthorizationConsentProcessor.java",
+      "line": 122,
+      "end_line": 187,
+      "source_sha256": "a823ceff973d1d91fe44ec431cee599da34e83738e407a2c9c41da5d6f46e03c",
+      "type": "io.quarkiverse.authorization.server.runtime.grant.authorizationcode.authorization.AuthorizationConsentProcessor",
+      "boundary": "internal"
+    },
+    {
+      "component": "consents",
+      "path": "runtime/src/main/java/io/quarkiverse/authorization/server/jdbc/JdbcOAuth2AuthorizationConsentService.java",
+      "line": 24,
+      "end_line": 62,
+      "source_sha256": "603db286793b625cdbaa2350bdf4bc7fc2e4bf63f79e05276a93da396db88b36",
+      "type": "io.quarkiverse.authorization.server.jdbc.JdbcOAuth2AuthorizationConsentService",
+      "boundary": "public"
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+# Single-issuer advanced verification; profile-specific files replace incompatible assembly.
+quarkus:
+  datasource:
+    db-kind: h2
+    username: sa
+    password: sa
+    jdbc:
+      url: "jdbc:h2:mem:authorization-code;DB_CLOSE_DELAY=-1"
+      max-size: 16
+    devservices:
+      enabled: false
+  http:
+    auth:
+      permission:
+        resources:
+          paths: /api/*
+          policy: authenticated
+          auth-mechanism: Bearer
+      session:
+        encryption-key: authorization-code-browser-test-key
+      form:
+        enabled: true
+        login-page: /auth/login
+        error-page: /auth/login?error=true
+        timeout: 15M
+        cookie-max-age: 15M
+      proactive: false
+    cors:
+      enabled: true
+      origins: "${demo.frontend-url}"
+      methods: GET,POST,OPTIONS
+      headers: Accept,Authorization,Content-Type
+      access-control-allow-credentials: false
+  oidc:
+    application-type: service
+    auth-server-url: "${quarkus.authorization-server.issuer}"
+    discovery-enabled: true
+    connection-timeout: 1S
+    connection-retry-count: 1
+    token:
+      audience: authorization-code-public-client,authorization-code-confidential-client
+      allow-jwt-introspection: false
+      allow-opaque-token-introspection: false
+    raw:
+      tenant-paths: /resource/raw
+      application-type: service
+      auth-server-url: "${quarkus.authorization-server.issuer}"
+      connection-timeout: 1S
+      connection-retry-count: 1
+      client-id: dpop-resource-server
+      credentials:
+        secret: resource-secret
+      allow-token-introspection-cache: false
+      token:
+        authorization-scheme: dpop
+        allow-jwt-introspection: false
+        allow-opaque-token-introspection: true
+    guarded:
+      tenant-paths: /resource/guarded
+      application-type: service
+      auth-server-url: "${quarkus.authorization-server.issuer}"
+      connection-timeout: 1S
+      connection-retry-count: 1
+      client-id: dpop-resource-server
+      credentials:
+        secret: resource-secret
+      allow-token-introspection-cache: false
+      token:
+        authorization-scheme: dpop
+        allow-jwt-introspection: false
+        allow-opaque-token-introspection: true
+    lifecycle:
+      tenant-paths: /lifecycle/*
+      application-type: service
+      auth-server-url: "${quarkus.authorization-server.issuer}"
+      connection-timeout: 1S
+      connection-retry-count: 1
+      client-id: resource-server
+      credentials:
+        secret: resource-secret
+      allow-token-introspection-cache: false
+      token:
+        lifespan-grace: 0
+        allow-jwt-introspection: false
+        allow-opaque-token-introspection: true
+  authorization-server:
+    pushed-authorization-requests-enabled: true
+    client-registration:
+      enabled: true
+    default-login-page-enabled: true
+    oidc:
+      enabled: true
+      client-registration:
+        enabled: true
+    signing:
+      key-id: integration-test-key
+      private-key-location: "classpath:test-private-key.pem"
+      public-key-location: "classpath:test-public-key.pem"
+    issuer: "http://localhost:${quarkus.http.port:8080}"
+  log:
+    level: INFO
+  native:
+    resources:
+      includes: test-private-key.pem,test-public-key.pem
+
+"%test":
+  quarkus:
+    authorization-server:
+      issuer: "http://localhost:${quarkus.http.test-port:8081}"
+
+demo:
+  frontend-url: "http://localhost:5173"

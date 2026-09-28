@@ -1,0 +1,551 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Quarkus Authorization Server Runtime Architecture",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/flynndi/quarkus-authorization-server",
+      "revision": "f439518e473a96b1982ced9ccf1d6b35e0bda200"
+    }
+  },
+  "components": [
+    {
+      "id": "build-wiring",
+      "type": "backend",
+      "label": "Build-time wiring",
+      "sublabel": "AuthorizationServerProcessor",
+      "tag": "RouteBuildItem · ArC beans",
+      "pos": [
+        40,
+        75
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "deployment/src/main/java/io/quarkiverse/authorization/server/deployment/AuthorizationServerProcessor.java",
+          "line": 162,
+          "end_line": 229,
+          "label": "Register runtime beans"
+        },
+        {
+          "path": "deployment/src/main/java/io/quarkiverse/authorization/server/deployment/AuthorizationServerProcessor.java",
+          "line": 496,
+          "end_line": 591,
+          "label": "Install protocol routes at startup"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/AuthorizationServerRecorder.java",
+          "line": 127,
+          "end_line": 161,
+          "label": "Resolve CDI endpoint handlers"
+        }
+      ]
+    },
+    {
+      "id": "oauth-clients",
+      "type": "external",
+      "label": "Browser / OAuth client",
+      "sublabel": "Authorization Code + PKCE and more",
+      "tag": "Sign in · consent · obtain tokens",
+      "pos": [
+        40,
+        320
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "examples/authorization-code/src/main/resources/application.yml",
+          "line": 27,
+          "end_line": 32,
+          "label": "Example client origin and CORS"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/web/OAuth2TokenEndpointHandler.java",
+          "line": 63,
+          "end_line": 119,
+          "label": "Receive OAuth token requests"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/authorizationcode/web/OAuth2AuthorizationEndpointHandler.java",
+          "line": 74,
+          "end_line": 121,
+          "label": "Browser identity and authorization entry"
+        }
+      ]
+    },
+    {
+      "id": "resource-api",
+      "type": "external",
+      "label": "Resource server",
+      "sublabel": "quarkus-oidc · protected API",
+      "tag": "Validate access tokens and permissions",
+      "pos": [
+        40,
+        610
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "examples/authorization-code/src/main/java/io/quarkiverse/authorization/server/example/authorizationcode/resourceserver/MessageResource.java",
+          "line": 14,
+          "end_line": 26,
+          "label": "Resource API permission checks"
+        },
+        {
+          "path": "examples/authorization-code/src/main/resources/application.yml",
+          "line": 15,
+          "end_line": 18,
+          "label": "Bearer authentication for resource APIs"
+        },
+        {
+          "path": "examples/authorization-code/src/main/resources/application.yml",
+          "line": 33,
+          "end_line": 43,
+          "label": "quarkus-oidc discovery and token validation"
+        }
+      ]
+    },
+    {
+      "id": "client-identity",
+      "type": "security",
+      "label": "OAuth client authentication",
+      "sublabel": "IdentityProviderManager",
+      "tag": "secret / JWT / mTLS / public",
+      "pos": [
+        375,
+        75
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/client/web/OAuth2ClientAuthenticationMechanism.java",
+          "line": 69,
+          "end_line": 119,
+          "label": "Parse credentials; delegate to Quarkus"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/client/authentication/ClientSecretAuthenticationProvider.java",
+          "line": 61,
+          "end_line": 98,
+          "label": "Look up client and build SecurityIdentity"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/client/ClientSecretVerifier.java",
+          "line": 6,
+          "end_line": 9,
+          "label": "client.ClientSecretVerifier — public SPI"
+        }
+      ]
+    },
+    {
+      "id": "http-security",
+      "type": "security",
+      "label": "Quarkus HTTP Security",
+      "sublabel": "HttpSecurity · Vert.x routes",
+      "tag": "User identity and client identity",
+      "pos": [
+        375,
+        320
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/web/OAuth2TokenEndpointSecurityConfiguration.java",
+          "line": 25,
+          "end_line": 55,
+          "label": "Select OAuth client authentication"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/authorizationcode/web/OAuth2AuthorizationEndpointSecurityConfiguration.java",
+          "line": 29,
+          "end_line": 40,
+          "label": "Permit prevalidation; protect consent"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/authorizationcode/authorization/AuthorizationRequestProcessor.java",
+          "line": 165,
+          "end_line": 258,
+          "label": "Validate before login and consent decisions"
+        }
+      ]
+    },
+    {
+      "id": "registered-clients",
+      "type": "database",
+      "label": "RegisteredClient store",
+      "sublabel": "RegisteredClientRepository",
+      "tag": "client · public API",
+      "pos": [
+        1045,
+        75
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/client/RegisteredClientRepository.java",
+          "line": 9,
+          "end_line": 35,
+          "label": "client package — public repository contract"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/config/RegisteredClientRepositoryProducer.java",
+          "line": 26,
+          "end_line": 58,
+          "label": "Internal default repository assembly"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/jdbc/JdbcRegisteredClientRepository.java",
+          "line": 39,
+          "end_line": 83,
+          "label": "jdbc package — application-selected storage"
+        }
+      ]
+    },
+    {
+      "id": "application-spi",
+      "type": "backend",
+      "label": "Application CDI components",
+      "sublabel": "IdentityProvider · domain SPIs",
+      "tag": "Users · policies · storage · keys",
+      "pos": [
+        375,
+        610
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/package-info.java",
+          "line": 1,
+          "end_line": 6,
+          "label": "Public domain APIs; runtime is internal"
+        },
+        {
+          "path": "examples/authorization-code/src/main/java/io/quarkiverse/authorization/server/example/authorizationcode/authorizationserver/config/ResourceOwnerIdentityProviders.java",
+          "line": 19,
+          "end_line": 81,
+          "label": "Application user IdentityProvider example"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/token/OAuth2TokenCustomizer.java",
+          "line": 7,
+          "end_line": 10,
+          "label": "token package — public claims customizer"
+        }
+      ]
+    },
+    {
+      "id": "protocol-flows",
+      "type": "backend",
+      "label": "Endpoints and grant flows",
+      "sublabel": "TokenGrantHandler · domain services",
+      "tag": "web SPI → runtime.grant.*",
+      "pos": [
+        710,
+        320
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/web/TokenGrantHandler.java",
+          "line": 9,
+          "end_line": 15,
+          "label": "web.TokenGrantHandler — public grant SPI"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/authorizationcode/web/AuthorizationCodeGrantHandler.java",
+          "line": 19,
+          "end_line": 53,
+          "label": "Internal parser → worker → exchange adapter"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/web/ProtocolExecutor.java",
+          "line": 18,
+          "end_line": 40,
+          "label": "Internal worker and request-context boundary"
+        }
+      ]
+    },
+    {
+      "id": "authorizations",
+      "type": "database",
+      "label": "Authorization store",
+      "sublabel": "OAuth2AuthorizationService",
+      "tag": "authorization · public API",
+      "pos": [
+        710,
+        610
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/authorization/OAuth2AuthorizationService.java",
+          "line": 8,
+          "end_line": 17,
+          "label": "authorization package — public state contract"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/authorizationcode/exchange/AuthorizationCodeExchange.java",
+          "line": 136,
+          "end_line": 215,
+          "label": "Issue tokens and update authorization state"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/jdbc/JdbcOAuth2AuthorizationService.java",
+          "line": 46,
+          "end_line": 85,
+          "label": "jdbc package — authorization persistence"
+        }
+      ]
+    },
+    {
+      "id": "token-issuance",
+      "type": "backend",
+      "label": "Shared token issuance",
+      "sublabel": "OAuth2TokenGenerator",
+      "tag": "token SPI · JWT / reference / refresh",
+      "pos": [
+        1045,
+        320
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/token/OAuth2TokenGenerator.java",
+          "line": 14,
+          "end_line": 17,
+          "label": "token package — public generator contract"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/config/OAuth2TokenGeneratorProducer.java",
+          "line": 28,
+          "end_line": 61,
+          "label": "Internal generator and customizer assembly"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/token/AuthorizationServerKeySource.java",
+          "line": 11,
+          "end_line": 28,
+          "label": "token package — application key source"
+        }
+      ]
+    },
+    {
+      "id": "consents",
+      "type": "database",
+      "label": "Consent store",
+      "sublabel": "OAuth2AuthorizationConsentService",
+      "tag": "authorization · public API",
+      "pos": [
+        1045,
+        610
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/authorization/OAuth2AuthorizationConsentService.java",
+          "line": 6,
+          "end_line": 13,
+          "label": "authorization package — public consent SPI"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/authorizationcode/authorization/AuthorizationConsentProcessor.java",
+          "line": 122,
+          "end_line": 187,
+          "label": "Merge, customize and persist consent"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/jdbc/JdbcOAuth2AuthorizationConsentService.java",
+          "line": 24,
+          "end_line": 62,
+          "label": "jdbc package — consent persistence"
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Build / startup · off the request path",
+      "wraps": [
+        "build-wiring"
+      ],
+      "pad": 20
+    },
+    {
+      "kind": "region",
+      "label": "Authorization server · Quarkus application / runtime",
+      "wraps": [
+        "http-security",
+        "client-identity",
+        "protocol-flows",
+        "token-issuance",
+        "registered-clients",
+        "authorizations",
+        "consents",
+        "application-spi"
+      ],
+      "pad": 30
+    },
+    {
+      "kind": "security-group",
+      "label": "Resource server · separate responsibility",
+      "wraps": [
+        "resource-api"
+      ],
+      "pad": 20
+    }
+  ],
+  "connections": [
+    {
+      "id": "oauth-http",
+      "from": "oauth-clients",
+      "to": "http-security",
+      "label": "OAuth / OIDC",
+      "variant": "emphasis",
+      "labelDy": 30
+    },
+    {
+      "id": "runtime-dispatch",
+      "from": "http-security",
+      "to": "protocol-flows",
+      "label": "Dispatch",
+      "variant": "emphasis"
+    },
+    {
+      "id": "issue-tokens",
+      "from": "protocol-flows",
+      "to": "token-issuance",
+      "label": "Issue token",
+      "variant": "emphasis"
+    },
+    {
+      "id": "authenticate-client",
+      "from": "http-security",
+      "to": "client-identity",
+      "label": "Authenticate client",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "find-client",
+      "from": "client-identity",
+      "to": "registered-clients",
+      "label": "Read client",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "authorization-state",
+      "from": "protocol-flows",
+      "to": "authorizations",
+      "label": "Authorization read / write",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        840,
+        560
+      ]
+    },
+    {
+      "id": "consent-state",
+      "from": "protocol-flows",
+      "to": "consents",
+      "label": "Consent read / write",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "resource-request",
+      "from": "oauth-clients",
+      "to": "resource-api",
+      "label": "Access Token",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        170,
+        416
+      ]
+    },
+    {
+      "id": "install-http",
+      "from": "build-wiring",
+      "to": "http-security",
+      "label": "Routes + beans",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "inject-behavior",
+      "from": "application-spi",
+      "to": "protocol-flows",
+      "label": "CDI injection",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Requests and execution",
+      "items": [
+        "OAuth2TokenEndpointHandler dispatches by grant_type; browser authorization validates before login / consent.",
+        "ProtocolExecutor runs token grant services on workers with a CDI request context; it is an internal helper."
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Public API and CDI",
+      "items": [
+        "Application imports use domain packages: client, authorization, token, grant.* and web; runtime.* is internal.",
+        "IdentityProvider supplies users; CDI supplies policies, OAuth2TokenCustomizer, keys and repositories."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Storage and resource access",
+      "items": [
+        "Three logical stores default to in-memory implementations, replaceable with JDBC; not three databases.",
+        "Clients send access tokens to resource APIs; JWT uses JWKS, reference tokens use Introspection."
+      ]
+    }
+  ]
+}

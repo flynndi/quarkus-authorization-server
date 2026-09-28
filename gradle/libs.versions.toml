@@ -1,0 +1,44 @@
+[versions]
+quarkus = "3.33.3.1"
+vanniktech-maven-publish = "0.36.0"
+spotless = "8.10.2"
+eclipse-formatter = "4.35"
+
+[libraries]
+jose4j = { module = "org.bitbucket.b_c:jose4j" }
+h2 = { module = "com.h2database:h2" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+quarkus-arc = { module = "io.quarkus:quarkus-arc" }
+quarkus-arc-deployment = { module = "io.quarkus:quarkus-arc-deployment" }
+quarkus-agroal = { module = "io.quarkus:quarkus-agroal" }
+quarkus-agroal-deployment = { module = "io.quarkus:quarkus-agroal-deployment" }
+quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
+quarkus-config-yaml = { module = "io.quarkus:quarkus-config-yaml" }
+quarkus-core-deployment = { module = "io.quarkus:quarkus-core-deployment" }
+quarkus-devui-deployment-spi = { module = "io.quarkus:quarkus-devui-deployment-spi" }
+quarkus-devui-deployment = { module = "io.quarkus:quarkus-devui-deployment" }
+quarkus-elytron-security-common = { module = "io.quarkus:quarkus-elytron-security-common" }
+quarkus-elytron-security-common-deployment = { module = "io.quarkus:quarkus-elytron-security-common-deployment" }
+quarkus-junit5-internal = { module = "io.quarkus:quarkus-junit5-internal" }
+quarkus-jackson = { module = "io.quarkus:quarkus-jackson" }
+quarkus-jackson-deployment = { module = "io.quarkus:quarkus-jackson-deployment" }
+quarkus-jdbc-h2 = { module = "io.quarkus:quarkus-jdbc-h2" }
+quarkus-junit5 = { module = "io.quarkus:quarkus-junit5" }
+quarkus-oidc = { module = "io.quarkus:quarkus-oidc" }
+quarkus-rest-jackson = { module = "io.quarkus:quarkus-rest-jackson" }
+quarkus-rest-jackson-deployment = { module = "io.quarkus:quarkus-rest-jackson-deployment" }
+quarkus-rest-qute = { module = "io.quarkus:quarkus-rest-qute" }
+quarkus-security = { module = "io.quarkus:quarkus-security" }
+quarkus-security-deployment = { module = "io.quarkus:quarkus-security-deployment" }
+quarkus-smallrye-jwt-build = { module = "io.quarkus:quarkus-smallrye-jwt-build" }
+quarkus-smallrye-jwt-build-deployment = { module = "io.quarkus:quarkus-smallrye-jwt-build-deployment" }
+quarkus-vertx-http = { module = "io.quarkus:quarkus-vertx-http" }
+quarkus-vertx-http-deployment = { module = "io.quarkus:quarkus-vertx-http-deployment" }
+rest-assured = { module = "io.rest-assured:rest-assured" }
+
+[plugins]
+maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "vanniktech-maven-publish" }
+quarkus-application = { id = "io.quarkus", version.ref = "quarkus" }
+quarkus-extension = { id = "io.quarkus.extension", version.ref = "quarkus" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

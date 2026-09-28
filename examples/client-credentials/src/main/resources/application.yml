@@ -1,0 +1,40 @@
+quarkus:
+  http:
+    host: 127.0.0.1
+  datasource:
+    db-kind: h2
+    username: sa
+    password: sa
+    jdbc:
+      url: "jdbc:h2:mem:client-credentials;DB_CLOSE_DELAY=-1"
+    devservices:
+      enabled: false
+  native:
+    resources:
+      includes: test-private-key.pem,test-public-key.pem
+  authorization-server:
+    issuer: "${AUTHORIZATION_SERVER_ISSUER:http://localhost:${quarkus.http.port:8080}}"
+    oidc:
+      # Enables discovery for the resource server, not a prerequisite for Client Credentials.
+      enabled: true
+    signing:
+      key-id: client-credentials-test-key
+      private-key-location: classpath:test-private-key.pem
+      public-key-location: classpath:test-public-key.pem
+  oidc:
+    application-type: service
+    auth-server-url: "${quarkus.authorization-server.issuer}"
+    discovery-enabled: true
+    connection-timeout: 1S
+    connection-retry-count: 0
+    token:
+      # The default JWT generator uses the client ID as the audience.
+      audience: machine-client
+      lifespan-grace: 0
+      allow-jwt-introspection: false
+      allow-opaque-token-introspection: false
+
+"%test":
+  quarkus:
+    authorization-server:
+      issuer: http://localhost:${quarkus.http.test-port:8081}

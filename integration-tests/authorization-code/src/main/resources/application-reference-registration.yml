@@ -1,0 +1,5 @@
+# Build with this profile to verify reference registration-management tokens.
+"%test":
+  quarkus:
+    authorization-server:
+      issuer: "http://localhost:${quarkus.http.test-port:8081}"

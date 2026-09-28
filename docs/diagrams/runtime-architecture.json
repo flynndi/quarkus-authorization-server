@@ -1,0 +1,551 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Quarkus Authorization Server 运行架构",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/flynndi/quarkus-authorization-server",
+      "revision": "f439518e473a96b1982ced9ccf1d6b35e0bda200"
+    }
+  },
+  "components": [
+    {
+      "id": "build-wiring",
+      "type": "backend",
+      "label": "构建期装配",
+      "sublabel": "AuthorizationServerProcessor",
+      "tag": "RouteBuildItem · ArC Bean",
+      "pos": [
+        40,
+        75
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "deployment/src/main/java/io/quarkiverse/authorization/server/deployment/AuthorizationServerProcessor.java",
+          "line": 162,
+          "end_line": 229,
+          "label": "注册运行期 Bean"
+        },
+        {
+          "path": "deployment/src/main/java/io/quarkiverse/authorization/server/deployment/AuthorizationServerProcessor.java",
+          "line": 496,
+          "end_line": 591,
+          "label": "安装协议路由并录制启动逻辑"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/AuthorizationServerRecorder.java",
+          "line": 127,
+          "end_line": 161,
+          "label": "解析 CDI 端点处理器"
+        }
+      ]
+    },
+    {
+      "id": "oauth-clients",
+      "type": "external",
+      "label": "浏览器 / OAuth 客户端",
+      "sublabel": "Authorization Code + PKCE 等",
+      "tag": "登录 · 授权 · 获取 token",
+      "pos": [
+        40,
+        320
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "examples/authorization-code/src/main/resources/application.yml",
+          "line": 27,
+          "end_line": 32,
+          "label": "示例客户端来源与 CORS"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/web/OAuth2TokenEndpointHandler.java",
+          "line": 63,
+          "end_line": 119,
+          "label": "接收 OAuth token 请求"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/authorizationcode/web/OAuth2AuthorizationEndpointHandler.java",
+          "line": 74,
+          "end_line": 121,
+          "label": "浏览器身份与授权入口"
+        }
+      ]
+    },
+    {
+      "id": "resource-api",
+      "type": "external",
+      "label": "资源服务器",
+      "sublabel": "quarkus-oidc · 受保护 API",
+      "tag": "校验 Access Token 与权限",
+      "pos": [
+        40,
+        610
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "examples/authorization-code/src/main/java/io/quarkiverse/authorization/server/example/authorizationcode/resourceserver/MessageResource.java",
+          "line": 14,
+          "end_line": 26,
+          "label": "资源 API 的权限校验"
+        },
+        {
+          "path": "examples/authorization-code/src/main/resources/application.yml",
+          "line": 15,
+          "end_line": 18,
+          "label": "资源 API 使用 Bearer 认证"
+        },
+        {
+          "path": "examples/authorization-code/src/main/resources/application.yml",
+          "line": 33,
+          "end_line": 43,
+          "label": "quarkus-oidc 发现与 token 校验"
+        }
+      ]
+    },
+    {
+      "id": "client-identity",
+      "type": "security",
+      "label": "OAuth 客户端身份",
+      "sublabel": "IdentityProviderManager",
+      "tag": "secret / JWT / mTLS / public",
+      "pos": [
+        375,
+        75
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/client/web/OAuth2ClientAuthenticationMechanism.java",
+          "line": 69,
+          "end_line": 119,
+          "label": "解析凭据并委托 Quarkus 认证"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/client/authentication/ClientSecretAuthenticationProvider.java",
+          "line": 61,
+          "end_line": 98,
+          "label": "查询客户端并构建 SecurityIdentity"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/client/ClientSecretVerifier.java",
+          "line": 6,
+          "end_line": 9,
+          "label": "client.ClientSecretVerifier — 公开 SPI"
+        }
+      ]
+    },
+    {
+      "id": "http-security",
+      "type": "security",
+      "label": "Quarkus HTTP Security",
+      "sublabel": "HttpSecurity · Vert.x 路由",
+      "tag": "区分用户身份与客户端身份",
+      "pos": [
+        375,
+        320
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/web/OAuth2TokenEndpointSecurityConfiguration.java",
+          "line": 25,
+          "end_line": 55,
+          "label": "为协议端点选择客户端认证"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/authorizationcode/web/OAuth2AuthorizationEndpointSecurityConfiguration.java",
+          "line": 29,
+          "end_line": 40,
+          "label": "允许预校验并保护 consent 提交"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/authorizationcode/authorization/AuthorizationRequestProcessor.java",
+          "line": 165,
+          "end_line": 258,
+          "label": "预校验后再决定登录与同意"
+        }
+      ]
+    },
+    {
+      "id": "registered-clients",
+      "type": "database",
+      "label": "RegisteredClient 仓储",
+      "sublabel": "RegisteredClientRepository",
+      "tag": "client · 公开 API",
+      "pos": [
+        1045,
+        75
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/client/RegisteredClientRepository.java",
+          "line": 9,
+          "end_line": 35,
+          "label": "client 包 — 公开仓储契约"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/config/RegisteredClientRepositoryProducer.java",
+          "line": 26,
+          "end_line": 58,
+          "label": "内部默认仓储装配"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/jdbc/JdbcRegisteredClientRepository.java",
+          "line": 39,
+          "end_line": 83,
+          "label": "jdbc 包 — 应用选择的存储实现"
+        }
+      ]
+    },
+    {
+      "id": "application-spi",
+      "type": "backend",
+      "label": "应用提供的 CDI 组件",
+      "sublabel": "IdentityProvider · 领域 SPI",
+      "tag": "用户来源 · 策略 · 存储 · 密钥",
+      "pos": [
+        375,
+        610
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/package-info.java",
+          "line": 1,
+          "end_line": 6,
+          "label": "公开领域 API；runtime 为内部实现"
+        },
+        {
+          "path": "examples/authorization-code/src/main/java/io/quarkiverse/authorization/server/example/authorizationcode/authorizationserver/config/ResourceOwnerIdentityProviders.java",
+          "line": 19,
+          "end_line": 81,
+          "label": "应用用户 IdentityProvider 示例"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/token/OAuth2TokenCustomizer.java",
+          "line": 7,
+          "end_line": 10,
+          "label": "token 包 — 公开 claims 定制接口"
+        }
+      ]
+    },
+    {
+      "id": "protocol-flows",
+      "type": "backend",
+      "label": "协议端点与授权流程",
+      "sublabel": "TokenGrantHandler · 领域服务",
+      "tag": "web SPI → runtime.grant.*",
+      "pos": [
+        710,
+        320
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/web/TokenGrantHandler.java",
+          "line": 9,
+          "end_line": 15,
+          "label": "web.TokenGrantHandler — 公开 grant SPI"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/authorizationcode/web/AuthorizationCodeGrantHandler.java",
+          "line": 19,
+          "end_line": 53,
+          "label": "内部 parser → worker → exchange 适配"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/web/ProtocolExecutor.java",
+          "line": 18,
+          "end_line": 40,
+          "label": "内部 worker 与请求上下文边界"
+        }
+      ]
+    },
+    {
+      "id": "authorizations",
+      "type": "database",
+      "label": "Authorization 仓储",
+      "sublabel": "OAuth2AuthorizationService",
+      "tag": "authorization · 公开 API",
+      "pos": [
+        710,
+        610
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/authorization/OAuth2AuthorizationService.java",
+          "line": 8,
+          "end_line": 17,
+          "label": "authorization 包 — 公开授权状态契约"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/authorizationcode/exchange/AuthorizationCodeExchange.java",
+          "line": 136,
+          "end_line": 215,
+          "label": "签发 token 并更新授权状态"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/jdbc/JdbcOAuth2AuthorizationService.java",
+          "line": 46,
+          "end_line": 85,
+          "label": "jdbc 包 — 授权持久化"
+        }
+      ]
+    },
+    {
+      "id": "token-issuance",
+      "type": "backend",
+      "label": "共享 token 签发",
+      "sublabel": "OAuth2TokenGenerator",
+      "tag": "token SPI · JWT / reference / refresh",
+      "pos": [
+        1045,
+        320
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/token/OAuth2TokenGenerator.java",
+          "line": 14,
+          "end_line": 17,
+          "label": "token 包 — 公开生成器契约"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/config/OAuth2TokenGeneratorProducer.java",
+          "line": 28,
+          "end_line": 61,
+          "label": "内部生成器与 customizer 装配"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/token/AuthorizationServerKeySource.java",
+          "line": 11,
+          "end_line": 28,
+          "label": "token 包 — 应用密钥源"
+        }
+      ]
+    },
+    {
+      "id": "consents",
+      "type": "database",
+      "label": "Consent 仓储",
+      "sublabel": "OAuth2AuthorizationConsentService",
+      "tag": "authorization · 公开 API",
+      "pos": [
+        1045,
+        610
+      ],
+      "size": [
+        260,
+        82
+      ],
+      "sources": [
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/authorization/OAuth2AuthorizationConsentService.java",
+          "line": 6,
+          "end_line": 13,
+          "label": "authorization 包 — 公开同意记录 SPI"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/runtime/grant/authorizationcode/authorization/AuthorizationConsentProcessor.java",
+          "line": 122,
+          "end_line": 187,
+          "label": "合并、定制并持久化同意记录"
+        },
+        {
+          "path": "runtime/src/main/java/io/quarkiverse/authorization/server/jdbc/JdbcOAuth2AuthorizationConsentService.java",
+          "line": 24,
+          "end_line": 62,
+          "label": "jdbc 包 — 同意记录持久化"
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "构建 / 启动准备 · 不参与逐次请求",
+      "wraps": [
+        "build-wiring"
+      ],
+      "pad": 20
+    },
+    {
+      "kind": "region",
+      "label": "授权服务器 · Quarkus 宿主应用 / runtime",
+      "wraps": [
+        "http-security",
+        "client-identity",
+        "protocol-flows",
+        "token-issuance",
+        "registered-clients",
+        "authorizations",
+        "consents",
+        "application-spi"
+      ],
+      "pad": 30
+    },
+    {
+      "kind": "security-group",
+      "label": "资源服务器职责边界 · 可独立部署",
+      "wraps": [
+        "resource-api"
+      ],
+      "pad": 20
+    }
+  ],
+  "connections": [
+    {
+      "id": "oauth-http",
+      "from": "oauth-clients",
+      "to": "http-security",
+      "label": "OAuth / OIDC",
+      "variant": "emphasis",
+      "labelDy": 30
+    },
+    {
+      "id": "runtime-dispatch",
+      "from": "http-security",
+      "to": "protocol-flows",
+      "label": "端点处理",
+      "variant": "emphasis"
+    },
+    {
+      "id": "issue-tokens",
+      "from": "protocol-flows",
+      "to": "token-issuance",
+      "label": "签发 token",
+      "variant": "emphasis"
+    },
+    {
+      "id": "authenticate-client",
+      "from": "http-security",
+      "to": "client-identity",
+      "label": "客户端认证",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "find-client",
+      "from": "client-identity",
+      "to": "registered-clients",
+      "label": "读取注册信息",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "authorization-state",
+      "from": "protocol-flows",
+      "to": "authorizations",
+      "label": "授权状态读写",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        840,
+        560
+      ]
+    },
+    {
+      "id": "consent-state",
+      "from": "protocol-flows",
+      "to": "consents",
+      "label": "同意记录读写",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "resource-request",
+      "from": "oauth-clients",
+      "to": "resource-api",
+      "label": "Access Token",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        170,
+        416
+      ]
+    },
+    {
+      "id": "install-http",
+      "from": "build-wiring",
+      "to": "http-security",
+      "label": "安装路由与 Bean",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "inject-behavior",
+      "from": "application-spi",
+      "to": "protocol-flows",
+      "label": "CDI 注入",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "请求与执行边界",
+      "items": [
+        "OAuth2TokenEndpointHandler 按 grant_type 分发；浏览器授权先预校验，再决定登录或 consent。",
+        "ProtocolExecutor 在 worker 上执行 token grant 服务并保留 CDI 请求上下文，属于内部实现。"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "公开 API 与 CDI",
+      "items": [
+        "应用通过 client、authorization、token、grant.*、web 等领域包接入；runtime.* 为内部实现。",
+        "IdentityProvider 提供用户身份；CDI 提供策略、OAuth2TokenCustomizer、密钥和仓储。"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "存储与资源访问",
+      "items": [
+        "三类仓储默认内存，应用可换成 JDBC；图中不表示三套独立数据库。",
+        "客户端携 token 访问资源 API；JWT 使用 JWKS，reference token 使用 Introspection。"
+      ]
+    }
+  ]
+}

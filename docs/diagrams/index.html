@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quarkus Authorization Server Runtime Architecture</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; background: #f8fafc; color: #172034; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    nav { height: 28px; padding: 2px 16px; display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+    button { font: inherit; font-size: 13px; line-height: 18px; padding: 2px 12px; border: 1px solid transparent; border-radius: 7px; color: inherit; background: transparent; cursor: pointer; }
+    button[aria-pressed="true"] { border-color: #0891b2; background: #0891b21a; font-weight: 650; }
+    button:hover { background: #0891b21a; }
+    button:focus-visible { outline: 2px solid #0891b2; outline-offset: 2px; }
+    iframe { display: block; width: 100%; height: calc(100vh - 28px); height: calc(100dvh - 28px); border: 0; }
+    @media (min-width: 1200px) {
+      html[data-integrated] nav { position: fixed; top: 24px; right: 16px; z-index: 20; padding: 0; }
+      html[data-integrated] iframe { height: 100vh; height: 100dvh; }
+    }
+    noscript p { margin: 20px; }
+  </style>
+</head>
+<body>
+  <nav aria-label="语言 / Language">
+    <button type="button" data-language="en" lang="en" aria-pressed="true">English</button>
+    <button type="button" data-language="zh-CN" lang="zh-CN" aria-pressed="false">中文</button>
+  </nav>
+  <iframe id="diagram" title="Quarkus Authorization Server Runtime Architecture" allowfullscreen></iframe>
+  <noscript><p><a href="runtime-architecture.en.html" lang="en">Open English diagram</a> · <a href="runtime-architecture.html" lang="zh-CN">打开中文版</a></p></noscript>
+  <script>
+    const editions = {
+      'zh-CN': { file: 'runtime-architecture.html', title: 'Quarkus Authorization Server 运行架构' },
+      en: { file: 'runtime-architecture.en.html', title: 'Quarkus Authorization Server Runtime Architecture' }
+    };
+    const frame = document.getElementById('diagram');
+    const buttons = [...document.querySelectorAll('[data-language]')];
+    let language = 'en';
+    let themeObserver;
+    let focusObserver;
+
+    function updateAddress(hash) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('lang', language);
+      url.hash = hash;
+      // Some browsers restrict history access for local file previews.
+      try { history.replaceState(null, '', url); } catch (_) { /* Language switching still works. */ }
+    }
+
+    function currentHash() {
+      try { return frame.contentWindow.location.hash; }
+      catch (_) { return window.location.hash; }
+    }
+
+    function selectLanguage(next, hash) {
+      const edition = editions[next];
+      language = next;
+      document.documentElement.lang = next;
+      document.title = edition.title;
+      frame.title = edition.title;
+      buttons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.language === next)));
+      updateAddress(hash);
+      const target = new URL(edition.file, window.location.href);
+      const theme = new URL(window.location.href).searchParams.get('theme');
+      if (theme === 'light' || theme === 'dark') target.searchParams.set('theme', theme);
+      target.hash = hash;
+      if (frame.src !== target.href) frame.src = target.href;
+    }
+
+    frame.addEventListener('load', () => {
+      themeObserver?.disconnect();
+      focusObserver?.disconnect();
+      // HTTP previews can preserve the focused node and match the viewer theme.
+      // Local file origins may deny frame access; the diagram and switch remain usable.
+      try {
+        const child = frame.contentWindow;
+        const root = child.document.documentElement;
+        // Reserve room beside the existing toolbar without changing generated files.
+        const integrationStyle = child.document.createElement('style');
+        integrationStyle.textContent = '@media (min-width: 1200px) { .toolbar { right: 164px; } }';
+        child.document.head.append(integrationStyle);
+        document.documentElement.setAttribute('data-integrated', 'true');
+        const syncTheme = () => {
+          const style = child.getComputedStyle(child.document.body);
+          document.documentElement.style.backgroundColor = style.backgroundColor;
+          document.documentElement.style.color = style.color;
+          document.documentElement.style.colorScheme = child.getComputedStyle(root).colorScheme;
+          // Carry an in-viewer theme change across language switches, including embedded use.
+          const theme = root.getAttribute('data-theme');
+          if (theme === 'light' || theme === 'dark') {
+            const url = new URL(window.location.href);
+            url.searchParams.set('theme', theme);
+            try { history.replaceState(null, '', url); } catch (_) { /* Local preview may restrict history. */ }
+          }
+        };
+        syncTheme();
+        themeObserver = new MutationObserver(syncTheme);
+        themeObserver.observe(root, { attributes: true });
+        themeObserver.observe(child.document.body, { attributes: true });
+        child.addEventListener('hashchange', () => updateAddress(child.location.hash));
+        // Archify also updates focus with replaceState, which does not emit hashchange.
+        const focusChip = child.document.getElementById('focus-chip');
+        if (focusChip) {
+          focusObserver = new MutationObserver(() => updateAddress(child.location.hash));
+          focusObserver.observe(focusChip, { attributes: true, childList: true, subtree: true });
+        }
+      } catch (_) { /* Browser file-origin restrictions do not block language selection. */ }
+    });
+
+    buttons.forEach(button => button.addEventListener('click', () => {
+      if (button.dataset.language !== language) selectLanguage(button.dataset.language, currentHash());
+    }));
+    const restoreAddress = () => {
+      const next = new URL(window.location.href).searchParams.get('lang');
+      selectLanguage(next === 'zh-CN' ? 'zh-CN' : 'en', window.location.hash);
+    };
+    window.addEventListener('popstate', restoreAddress);
+    restoreAddress();
+  </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+/* Applied only by the website host. The generated standalone artifacts stay unchanged. */
+.toolbar, .header, .cards { display: none; }
+body { padding: 20px 24px; }
+.diagram-container { border: 0; box-shadow: none; border-radius: 0; }
+@media (max-width: 767px) {
+  body { padding: 16px; }
+}

@@ -1,0 +1,85 @@
+---
+quarkus:
+  http:
+    host: 127.0.0.1
+  datasource:
+    db-kind: h2
+    username: sa
+    password: sa
+    jdbc:
+      url: jdbc:h2:mem:client-credentials;DB_CLOSE_DELAY=-1
+    devservices:
+      enabled: false
+  native:
+    resources:
+      includes: test-private-key.pem,test-public-key.pem
+  authorization-server:
+    issuer: "${AUTHORIZATION_SERVER_ISSUER:http://localhost:${quarkus.http.port:8080}}"
+    oidc:
+      enabled: true
+    signing:
+      key-id: client-credentials-test-key
+      private-key-location: classpath:test-private-key.pem
+      public-key-location: classpath:test-public-key.pem
+  oidc:
+    application-type: service
+    auth-server-url: "${quarkus.authorization-server.issuer}"
+    discovery-enabled: true
+    connection-timeout: 1S
+    connection-retry-count: 0
+    token:
+      audience:
+      - machine-client
+      - short-lived-client
+      - post-client
+      - jwt-private
+      - jwt-secret
+      lifespan-grace: 0
+      allow-jwt-introspection: false
+      allow-opaque-token-introspection: false
+    raw:
+      tenant-paths: "/resource/raw"
+      application-type: service
+      auth-server-url: "${quarkus.authorization-server.issuer}"
+      connection-timeout: 1S
+      connection-retry-count: 1
+      client-id: dpop-resource-server
+      credentials:
+        secret: resource-secret
+      allow-token-introspection-cache: false
+      token:
+        authorization-scheme: dpop
+        allow-jwt-introspection: false
+        allow-opaque-token-introspection: true
+    guarded:
+      tenant-paths: "/resource/guarded"
+      application-type: service
+      auth-server-url: "${quarkus.authorization-server.issuer}"
+      connection-timeout: 1S
+      connection-retry-count: 1
+      client-id: dpop-resource-server
+      credentials:
+        secret: resource-secret
+      allow-token-introspection-cache: false
+      token:
+        authorization-scheme: dpop
+        allow-jwt-introspection: false
+        allow-opaque-token-introspection: true
+    lifecycle:
+      tenant-paths: "/lifecycle/*"
+      application-type: service
+      auth-server-url: "${quarkus.authorization-server.issuer}"
+      connection-timeout: 1S
+      connection-retry-count: 1
+      client-id: resource-server
+      credentials:
+        secret: resource-secret
+      allow-token-introspection-cache: false
+      token:
+        lifespan-grace: 0
+        allow-jwt-introspection: false
+        allow-opaque-token-introspection: true
+"%test":
+  quarkus:
+    authorization-server:
+      issuer: http://localhost:${quarkus.http.test-port:8081}

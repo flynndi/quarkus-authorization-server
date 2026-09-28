@@ -1,0 +1,97 @@
+quarkus:
+  http:
+    root-path: /server
+    auth:
+      form:
+        enabled: true
+        login-page: /server/auth/login
+        error-page: /server/auth/login?error=true
+      session:
+        encryption-key: multiple-issuers-demo-browser-key
+      permission:
+        resources:
+          paths: /server/alpha/message,/server/beta/message
+          policy: authenticated
+          auth-mechanism: Bearer
+  authorization-server:
+    multiple-issuers-allowed: true
+    issuers:
+      alpha: "http://localhost:${quarkus.http.port:8080}/server/alpha"
+      beta: "http://localhost:${quarkus.http.port:8080}/server/beta"
+    default-login-page-enabled: true
+    authorization-endpoint: /authorize
+    token-endpoint: /token
+    oidc:
+      enabled: true
+      client-registration:
+        enabled: false
+    pushed-authorization-requests-enabled: true
+    # This is a separate build configuration of the Authorization Code test application.
+    issuer: ""
+    client-registration:
+      enabled: false
+    # Tenant key sources replace the base application's global signing material.
+    signing:
+      key-id: ""
+      private-key-location: ""
+      public-key-location: ""
+  # Two named datasources isolate the unchanged client, authorization and consent schemas.
+  datasource:
+    alpha:
+      db-kind: h2
+      username: sa
+      password: sa
+      jdbc:
+        url: "jdbc:h2:mem:issuer-alpha;DB_CLOSE_DELAY=-1"
+        max-size: 8
+      devservices:
+        enabled: false
+    beta:
+      db-kind: h2
+      username: sa
+      password: sa
+      jdbc:
+        url: "jdbc:h2:mem:issuer-beta;DB_CLOSE_DELAY=-1"
+        max-size: 8
+      devservices:
+        enabled: false
+    active: false
+  oidc:
+    # Resource-server tenant selection is provided by quarkus-oidc.
+    tenant-enabled: false
+    alpha:
+      auth-server-url: "${quarkus.authorization-server.issuers.alpha}"
+      tenant-paths: /server/alpha/message
+      application-type: service
+      connection-timeout: 1S
+      connection-retry-count: 1
+      token:
+        audience: shared
+        allow-jwt-introspection: false
+        allow-opaque-token-introspection: false
+    beta:
+      auth-server-url: "${quarkus.authorization-server.issuers.beta}"
+      tenant-paths: /server/beta/message
+      application-type: service
+      connection-timeout: 1S
+      connection-retry-count: 1
+      token:
+        audience: shared
+        allow-jwt-introspection: false
+        allow-opaque-token-introspection: false
+    raw:
+      tenant-enabled: false
+    guarded:
+      tenant-enabled: false
+    lifecycle:
+      tenant-enabled: false
+  native:
+    resources:
+      includes: alpha-*.pem,beta-*.pem
+
+"%test":
+  quarkus:
+    authorization-server:
+      issuers:
+        alpha: "http://localhost:${quarkus.http.test-port:8081}/server/alpha"
+        beta: "http://localhost:${quarkus.http.test-port:8081}/server/beta"

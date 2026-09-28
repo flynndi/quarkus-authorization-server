@@ -1,0 +1,38 @@
+quarkus:
+  datasource:
+    db-kind: h2
+    username: sa
+    password: sa
+    jdbc:
+      url: "jdbc:h2:mem:authorization-server;DB_CLOSE_DELAY=-1"
+      max-size: 16
+    devservices:
+      enabled: false
+  authorization-server:
+    oidc:
+      enabled: true
+    signing:
+      key-id: integration-test-key
+      private-key-location: classpath:test-private-key.pem
+      public-key-location: classpath:test-public-key.pem
+    issuer: "${AUTHORIZATION_SERVER_ISSUER:http://localhost:${quarkus.http.port:8080}}"
+  oidc:
+    application-type: service
+    auth-server-url: "${quarkus.authorization-server.issuer}"
+    discovery-enabled: true
+    connection-timeout: 1S
+    connection-retry-count: 0
+    token:
+      audience: quarkus-authorization-server
+      allow-jwt-introspection: false
+      allow-opaque-token-introspection: false
+  log:
+    level: INFO
+  native:
+    resources:
+      includes: test-private-key.pem,test-public-key.pem
+
+"%test":
+  quarkus:
+    authorization-server:
+      issuer: http://localhost:${quarkus.http.test-port:8081}

@@ -4,7 +4,7 @@
 
 ## 运行示例
 
-[快速开始](./getting-started)从依赖创建独立应用，走通登录、使用 client secret 兑换授权码与访问受保护接口。本篇通过可选的 [Vue 示例](https://github.com/flynndi/quarkus-authorization-server/tree/main/examples/authorization-code)为 public 客户端引入 PKCE。在仓库根目录启动后端：
+[快速开始](./getting-started)从依赖创建独立的授权服务器与资源服务器应用，走通登录、使用 client secret 兑换授权码与访问受保护接口。本篇通过可选的 [Vue 示例](https://github.com/flynndi/quarkus-authorization-server/tree/main/examples/authorization-code)为 public 客户端引入 PKCE。该 Vue 示例为方便运行，在一个后端中同时承载授权服务器和资源 API。在仓库根目录启动后端：
 
 ```shell
 ./gradlew :examples:authorization-code:quarkusDev --no-parallel

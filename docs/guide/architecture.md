@@ -12,7 +12,7 @@ import ArchitecturePage from '../.vitepress/theme/components/ArchitecturePage.vu
 
 # Architecture
 
-The extension runs inside a Quarkus application. It provides OAuth protocol handling and token issuance; your application supplies users, clients, persistence and access rules. A resource server can share that process, as the examples do, or run separately.
+The extension runs inside a Quarkus application. It provides OAuth protocol handling and token issuance; your application supplies users, clients, persistence and access rules. The [quickstart](./getting-started) runs the authorization server and resource API in separate processes. They can also share a process, as some repository examples do; their protocol responsibilities remain distinct.
 
 ## Three boundaries
 

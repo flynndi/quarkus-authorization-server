@@ -7,7 +7,7 @@ markdownStyles: false
 home:
   headline: Authorization,
   emphasis: built for Quarkus.
-  lead: OAuth 2.0 and optional OpenID Connect for Quarkus. Embed authorization in your application or build a dedicated service, using CDI and Quarkus Security.
+  lead: For new or existing Quarkus systems that own their users and need to authorize other applications to access their APIs. Build an OAuth 2.0 authorization service with optional OpenID Connect, using CDI and Quarkus Security.
   start: Get started
   startHref: /guide/getting-started
   source: View source

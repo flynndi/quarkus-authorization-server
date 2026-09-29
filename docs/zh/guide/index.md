@@ -1,19 +1,35 @@
 # 介绍
 
-Quarkus Authorization Server 是一个 Quarkus 扩展，在应用进程内提供 OAuth 2.0 授权服务器，并可按需打开 OpenID Connect。它通过 Quarkus 的 CDI、HTTP Security、`SecurityIdentity`、Vert.x 和构建期装配集成。
+Quarkus Authorization Server 是一个用于构建 OAuth 2.0 授权服务的 Quarkus 扩展，可按需启用 OpenID Connect。它面向**新建或已有的 Quarkus 系统：自行管理用户与认证，并需要授权其他应用访问自己的 API**。
 
-依赖坐标是 `@EXTENSION_GROUP@:quarkus-authorization-server:@EXTENSION_VERSION@`。本文档介绍扩展的配置方式，以及本仓库 `examples` 目录下各示例应用的运行方法。
+例如，一个系统拥有自己的用户服务和消息 API，另一个应用希望在用户同意后读取消息。用户在授权服务器登录并同意授予 `message.read`，客户端应用取得 access token，再携带它调用消息 API。客户端无需获得用户密码、直接访问用户库或共享授权服务器的登录 Cookie。
 
-## 它解决什么问题
+## 登录、授权与 API 访问
 
-应用需要签发 access token、校验客户端、可选地让浏览器用户登录并确认 scope。扩展负责协议端点、授权记录、token 生成和默认登录/consent HTML。应用负责：
+Quarkus Form 可以处理本应用的用户名密码登录。扩展利用这个登录结果确定用户身份，进一步提供客户端应用所需的 OAuth 端点、客户端认证、consent 和 token 签发。如果只需要本应用的登录，Form 认证本身就可能足够。
 
-- 用户模型，以及 Form 密码登录与 Cookie 恢复用的 `IdentityProvider`
-- 客户端与授权存储（默认内存，或通过 CDI 换成 JDBC）
-- 生产环境的 issuer、签名密钥和数据库迁移
-- 资源 API 如何解释 token 里的 scope、角色和 claims
+| 角色 | 职责 |
+| --- | --- |
+| 授权服务器 | 使用应用自己的用户认证，校验 OAuth 客户端及申请的访问范围，签发 token |
+| OAuth 客户端 | 引导用户登录和授权、处理回调、获取 access token，再调用 API |
+| 资源 API | 通过 `quarkus-oidc` 验证 access token，执行自己的访问规则 |
 
-用户 roles/permissions、client scope 和资源端授权不是自动等价的，也不会互相继承。
+启用 OpenID Connect 后，客户端应用还可以将授权服务器作为 OpenID Provider，完成用户登录。扩展实现 AS/OP 一侧，客户端应用通过 OAuth/OIDC 客户端库接入。
+
+[快速开始](./getting-started)将授权服务器与资源 API 运行在**两个独立应用**中，通过 issuer discovery、公钥和 access token 建立信任关系。资源 API 不需要授权服务器扩展或用户密码库。扩展运行在承载它的 Quarkus 应用内部，既可以用于构建独立授权服务，也可以加入已有应用；协议角色仍然各有职责。
+
+## 应用需要提供什么
+
+扩展负责协议端点、授权记录、token 生成及默认登录/consent 页面。应用负责：
+
+- 用户模型与认证；快速开始通过 `IdentityProvider` Bean 将其接入 Form 登录
+- 客户端注册，以及客户端、授权记录、consent 的存储（默认内存，也可通过 CDI 使用 JDBC）
+- 部署使用的 issuer、持久签名密钥与数据库迁移
+- 资源 API 如何解释 scope、角色和 claims
+
+用户 roles/permissions、client scope 和资源端授权不是自动等价的，也不会互相继承。扩展提供构建授权服务器所需的组件，并不包含完整的用户管理产品。
+
+从在授权服务器应用中引入 `@EXTENSION_GROUP@:quarkus-authorization-server:@EXTENSION_VERSION@` 开始。[快速开始](./getting-started)依次介绍依赖、用户 Bean、两个应用各自的 YAML 配置，以及授权码、token 和 API 调用的完整流程，无需下载本仓库源码。
 
 ## 和 Quarkus 怎么接
 
@@ -44,17 +60,9 @@ Quarkus Authorization Server 是一个 Quarkus 扩展，在应用进程内提供
 
 支持的能力与边界见下文及各协议指南，以源码、公开 SPI 和测试为准。
 
-## 应用需要写哪些代码
-
-最短的机器客户端路径通常包括：注册一个 `client_credentials` 客户端、配置 issuer、提供受保护资源。本地演示可让默认密钥源自动生成临时签名密钥；持久密钥属于部署选择，见[签名密钥](/zh/reference/signing)。
-
-浏览器 Code + PKCE 路径还要提供用户 `IdentityProvider`，并让前端作为 OAuth 客户端处理 callback。设置 `quarkus.authorization-server.default-login-page-enabled=true` 和 `quarkus.http.auth.form.enabled=true` 后，内置登录集成为扩展的浏览器端点选择 Form。登录和 consent 继续使用授权服务器页面，资源 API 的访问规则仍由应用保留。配置和自定义方式见 [Code 指南](./authorization-code)。
-
-不要把 `integration-tests` 里的整套测试 fixture（公开口令、固定 PEM、H2 建表）当作生产装配。那些账号和密钥只用于演示与验收。
-
 ## 接下来
 
-1. [快速开始](/zh/guide/getting-started)：在自己的应用中引入依赖，提供 CDI 用户认证，配置 YAML，登录并携带 token 调用 `quarkus-oidc` 资源接口。
+1. [快速开始](/zh/guide/getting-started)：独立运行授权服务器与资源 API，通过 Authorization Code 获取 token，再携带 token 调用 API。
 2. [参考](/zh/reference/)：查配置键和后续端点/SPI 手册的入口。
 3. [Playground](/zh/playground/)：连接 Quarkus 演示服务器体验四种授权流程、查看 Token 并调用资源 API，也可使用离线 PKCE、JWT 和请求工具。
 

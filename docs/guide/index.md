@@ -1,19 +1,35 @@
 # Introduction
 
-Quarkus Authorization Server is a Quarkus extension that runs an OAuth 2.0 authorization server in the application process, with optional OpenID Connect. It integrates through Quarkus CDI, HTTP Security, `SecurityIdentity`, Vert.x and build-time augmentation.
+Quarkus Authorization Server is a Quarkus extension for building an OAuth 2.0 authorization service, with optional OpenID Connect. It is intended for **new or existing Quarkus systems that manage their own users and authentication and need to authorize other applications to access their APIs**.
 
-The coordinates are `@EXTENSION_GROUP@:quarkus-authorization-server:@EXTENSION_VERSION@`. These guides explain how to configure the extension and run the applications in this repository's `examples` directory.
+For example, a system has a user service and a messages API. Another application wants to read a user's messages with their permission. The user signs in on the authorization server and approves `message.read`. The client application receives an access token and presents it to the messages API. It does not need the user's password, direct access to the user database or the authorization server's login cookie.
 
-## What it is for
+## Login, authorization and API access
 
-Applications that need to issue access tokens, authenticate clients, and optionally authenticate a browser user who consents to scopes. The extension owns protocol endpoints, authorization records, token generation, and the default login/consent HTML. The application owns:
+Quarkus Form authentication can handle local username/password login. The extension uses that login to establish who the user is, then provides the OAuth endpoints, client authentication, consent and token issuance that client applications need. If an application only needs its own local login, Form authentication can be enough.
 
-- The user model, plus `IdentityProvider` implementations for form passwords and cookie restoration
-- Client and authorization storage (in-memory by default, or JDBC through CDI)
-- Production issuer URL, signing keys and database migrations
-- How a resource API interprets scopes, roles and claims in the token
+| Role | What it does |
+| --- | --- |
+| Authorization server | Uses the application's user authentication, checks the OAuth client and requested access, and issues tokens |
+| OAuth client | Redirects the user to sign in and authorize access, handles the callback, obtains an access token and calls the API |
+| Resource API | Uses `quarkus-oidc` to validate the access token and enforces its own access rules |
 
-User roles/permissions, client scopes and resource-server authorization are not automatically equivalent and do not inherit from each other.
+With OpenID Connect enabled, client applications can also use the authorization server as their OpenID Provider for user sign-in. The extension implements the AS/OP side; a client application uses an OAuth/OIDC client library to integrate with it.
+
+The [quickstart](./getting-started) runs the authorization server and resource API as **separate applications**, connected through issuer discovery, public keys and access tokens. The resource API does not need the authorization-server extension or the user's password store. The extension runs inside the Quarkus application that hosts it, so you can build a dedicated authorization service or add it to an application; the protocol roles remain distinct.
+
+## What your application provides
+
+The extension owns protocol endpoints, authorization records, token generation and default login/consent pages. Your application owns:
+
+- The user model and authentication; the Form-based quickstart connects these through `IdentityProvider` beans
+- Client registrations and storage for clients, authorizations and consent (in-memory by default, or JDBC through CDI)
+- The issuer URL, durable signing keys and database migrations for deployment
+- The resource API's interpretation of scopes, roles and claims
+
+User roles/permissions, client scopes and resource-server authorization are not automatically equivalent and do not inherit from each other. The extension supplies authorization-server building blocks, rather than a complete user-management product.
+
+Start by adding `@EXTENSION_GROUP@:quarkus-authorization-server:@EXTENSION_VERSION@` to the authorization-server application. The [quickstart](./getting-started) walks through the dependencies, user beans, two applications' YAML configuration and a complete code-to-token-to-API flow; no repository checkout is needed.
 
 ## How it fits Quarkus
 
@@ -44,17 +60,9 @@ Read the [architecture guide](./architecture) for module boundaries and the requ
 
 The supported capabilities and their boundaries are described below and in the protocol guides. Source, public SPI and tests are authoritative.
 
-## What the application must provide
-
-The shortest machine-client path registers a `client_credentials` client, sets an issuer and exposes a protected resource. The default key source can generate temporary signing keys for a local demo; durable keys are a deployment choice described in [Signing keys](/reference/signing).
-
-A browser Code + PKCE path also needs user `IdentityProvider` beans and a frontend that acts as an OAuth client. Enable the built-in login integration with `quarkus.authorization-server.default-login-page-enabled=true` and `quarkus.http.auth.form.enabled=true`; it selects Form for the extension's browser endpoints. Login and consent stay on authorization-server pages, while the application keeps its resource API rules. See the [Code guide](./authorization-code) for configuration and customization.
-
-Do not copy the `integration-tests` fixtures (public passwords, bundled PEMs, H2 schema bootstrap) into production. Those values exist for demonstration and verification only.
-
 ## Next
 
-1. [Getting started](/guide/getting-started): add the dependency to your application, provide CDI user authentication, configure YAML, sign in and call a `quarkus-oidc` resource API.
+1. [Getting started](/guide/getting-started): run a separate authorization server and resource API, obtain a token through Authorization Code, and call the API.
 2. [Reference](/reference/): where to look up configuration keys, endpoints and SPI.
 3. [Playground](/playground/): try four OAuth flows against the Quarkus demo server, inspect tokens and call protected APIs. Offline PKCE, JWT and request tools remain available.
 

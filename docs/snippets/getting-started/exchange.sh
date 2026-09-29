@@ -7,7 +7,7 @@ from urllib.parse import parse_qs, urlsplit
 
 callback = urlsplit(os.environ["QAS_CALLBACK"])
 params = parse_qs(callback.query)
-if (callback.scheme, callback.netloc, callback.path) != ("http", "localhost:8080", "/callback.html"):
+if (callback.scheme, callback.netloc, callback.path) != ("http", "localhost:8081", "/callback.html"):
     sys.exit("Unexpected callback URL")
 if params.get("state") != [os.environ["QAS_STATE"]]:
     sys.exit("State mismatch: restart authorization")
@@ -21,7 +21,7 @@ PY
 ) && QAS_TOKEN_RESPONSE=$(curl --fail-with-body -sS \
   -u quickstart-client:quickstart-secret \
   --data-urlencode grant_type=authorization_code \
-  --data-urlencode redirect_uri=http://localhost:8080/callback.html \
+  --data-urlencode redirect_uri=http://localhost:8081/callback.html \
   --data-urlencode "code=$QAS_CODE" \
   http://localhost:8080/oauth2/token) && \
 QAS_ACCESS_TOKEN=$(printf '%s' "$QAS_TOKEN_RESPONSE" \

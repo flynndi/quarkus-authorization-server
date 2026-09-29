@@ -1,0 +1,17 @@
+quarkus:
+  http:
+    port: 8081
+    auth:
+      permission:
+        resources:
+          paths: /api/*
+          policy: authenticated
+          auth-mechanism: Bearer
+  oidc:
+    application-type: service
+    # Discover the authorization server in the other process.
+    auth-server-url: http://localhost:8080
+    token:
+      audience: quickstart-client
+      allow-jwt-introspection: false
+      allow-opaque-token-introspection: false

@@ -7,7 +7,7 @@ markdownStyles: false
 home:
   headline: 为 Quarkus 应用
   emphasis: 构建授权服务。
-  lead: 为 Quarkus 应用提供 OAuth 2.0 授权能力，按需启用 OpenID Connect。可内嵌应用，也可构建独立服务，复用 CDI 与 Quarkus Security。
+  lead: 面向自行管理用户、需要授权其他应用访问 API 的新建或已有 Quarkus 系统。复用 CDI 与 Quarkus Security 构建 OAuth 2.0 授权服务，按需启用 OpenID Connect。
   start: 快速开始
   startHref: /zh/guide/getting-started
   source: 查看源码

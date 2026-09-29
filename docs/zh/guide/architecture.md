@@ -12,7 +12,7 @@ import ArchitecturePage from '../../.vitepress/theme/components/ArchitecturePage
 
 # 架构 {#architecture}
 
-扩展运行在 Quarkus 应用内部，提供 OAuth 协议处理与 token 签发；应用提供用户、客户端、持久化和访问规则。资源服务器可以像示例一样放在同一进程，也可以独立部署。
+扩展运行在 Quarkus 应用内部，提供 OAuth 协议处理与 token 签发；应用提供用户、客户端、持久化和访问规则。[快速开始](./getting-started)将授权服务器与资源 API 运行在不同进程中。也可以像部分仓库示例一样合并部署；各自的协议职责仍然独立。
 
 ## 三个边界 {#three-boundaries}
 

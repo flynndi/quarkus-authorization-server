@@ -1,6 +1,6 @@
 # Tokens and resource servers
 
-The authorization server issues tokens. A resource server validates access tokens and applies its own access rules. The examples put both roles in one application for convenience; the same token boundary applies when they run in separate processes.
+The authorization server issues tokens. A resource server validates access tokens and applies its own access rules. The [quickstart](./getting-started) runs them in separate applications. Some repository examples host both roles together for convenience; token validation and API access rules still belong to the resource server.
 
 ## Choose a token representation
 

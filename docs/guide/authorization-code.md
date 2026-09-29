@@ -4,7 +4,7 @@ Use this flow when a browser application needs a user to sign in and authorize a
 
 ## Run the example
 
-[Getting Started](./getting-started) builds a standalone application from dependencies and walks through login, Authorization Code with client-secret authentication, and a protected API. This page adds PKCE for a public client through the optional [Vue example](https://github.com/flynndi/quarkus-authorization-server/tree/main/examples/authorization-code). Start the backend from the repository root:
+[Getting Started](./getting-started) creates separate authorization-server and resource-server applications from dependencies and walks through login, Authorization Code with client-secret authentication, and a protected API. This page adds PKCE for a public client through the optional [Vue example](https://github.com/flynndi/quarkus-authorization-server/tree/main/examples/authorization-code). The Vue example hosts the authorization server and resource API in one backend for convenience. Start it from the repository root:
 
 ```shell
 ./gradlew :examples:authorization-code:quarkusDev --no-parallel

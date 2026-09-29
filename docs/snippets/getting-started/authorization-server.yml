@@ -1,0 +1,23 @@
+quarkus:
+  http:
+    port: 8080
+    auth:
+      form:
+        enabled: true
+  authorization-server:
+    issuer: http://localhost:8080
+    default-login-page-enabled: true
+    # Publish OIDC discovery and JWKS for the resource server.
+    oidc:
+      enabled: true
+    clients:
+      quickstart-client:
+        client-name: Quickstart
+        client-authentication-methods: client_secret_basic
+        # Bcrypt hash of the demo client secret: quickstart-secret.
+        client-secret: '$2a$10$ADV8VEBZhxueuLTSw6i9LO7efLWg25a1PW1RH93GlPbFng/E3v5tO'
+        authorization-grant-types: authorization_code
+        redirect-uris: http://localhost:8081/callback.html
+        scopes: message.read
+        require-proof-key: false
+        require-authorization-consent: true

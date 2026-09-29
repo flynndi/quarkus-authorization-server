@@ -483,3 +483,21 @@ REF-02 已按用户要求提交并 push：`20d5609`（`docs: document protocol e
 - `npm --prefix docs run build` 通过；Chrome 检查中英文代码片段和版本占位符均正确展开，桌面与手机宽度无页面横向溢出或脚本错误。
 
 验证使用 Maven 3.9.11 执行文档中的 `mvn quarkus:dev`；网络依赖解析复用本机缓存。本轮未发布到 Cloudflare，不将本地页面检查作为线上部署验收。
+
+
+### 2026-09-29：分开授权服务器与资源 API（DOC-01 复验）
+
+中英文首页和引言明确面向新建或已有的、自行管理用户与认证、需要授权其他应用访问 API 的 Quarkus 系统，并解释 Form 登录、OAuth 授权和资源 API 校验之间的关系。快速开始改为两个独立应用：`authorization-server:8080` 提供用户认证、consent 和 token 签发，`resource-server:8081` 只通过 `quarkus-oidc` 保护 API。依旧使用 confidential Authorization Code 和 HTTP Basic 客户端认证，不要求 PKCE。
+
+两种语言共用拆分后的 YAML 与 shell 片段。浏览器和终端命令充当 OAuth 客户端；资源应用只托管教程的静态回调辅助页，不执行 token 兑换、不持有客户端密钥。授权请求、注册回调和兑换命令统一使用 `http://localhost:8081/callback.html`。架构、Code 和资源服务器指南同步区分这条快速开始与合并部署的仓库示例。
+
+实际验证：
+
+- 在仓库外通过文档中的 Maven create 命令创建两个项目，使用 JDK 21、Maven 3.9.11、Quarkus 3.33.3.1 和发布依赖 `io.github.flynndi:quarkus-authorization-server:1.0.0-beta1`；没有使用本仓库 runtime/deployment 源码替换发布包。
+- 授权服务器只复制用户认证 Bean 与授权侧 YAML；资源服务器只复制资源类、资源侧 YAML 与静态回调页。先启动授权服务器，再用 `-Ddebug=5006` 启动资源服务器，两者分别监听 `8080` 和 `8081`，OIDC discovery 成功。
+- Chrome 完成默认 Form 登录、勾选 `message.read` 并同意授权，跨端口回调携带正确 state；执行文档的 shell 片段，以 HTTP Basic 兑换 token，未携带 PKCE 参数。
+- 资源 API 携带 access token 返回 `200`，正文为 `subject=alice`、`message=Hello, OAuth!`；不带 token 或只带 Form Cookie 返回 `401`。token 的 issuer 为 `http://localhost:8080`，audience 包含 `quickstart-client`。
+- 错误 client secret 返回 `401 / invalid_client`；错误 state 被 shell 拒绝；重复兑换授权码返回 `400 / invalid_grant`。
+- 24 项文档 Node 测试、VitePress production build 和 `git diff --check` 通过；Chrome 检查中英文首页、引言与快速开始，代码片段和版本占位符正确展开，1440 px 桌面及 390 px 手机宽度无页面横向溢出、资源加载错误或脚本错误。
+
+边界：本次只更新文档与共享片段，没有修改扩展实现、仓库示例或 Playground 后端；未做 native 验证或 Cloudflare 发布。本轮按用户要求提交并 push 到 `dev`，主分支由用户合并。

@@ -91,7 +91,7 @@ Consent 是向同一端点提交的另一种表单 POST，不带 `response_type`
 
 </div>
 
-Token Exchange 接受 token type URN `urn:ietf:params:oauth:token-type:access_token` 和 `urn:ietf:params:oauth:token-type:jwt`，请求输出类型默认为 `access_token`。输入须对应有效的本地 authorization。Subject 需要资源所有者身份；Client Credentials token 可以作为 actor，不能作为用户 subject。委托检查使用 `may_act` / `act`。这不是交换任意外部 JWT 的端点。见 [TokenExchangeRequestParser] 和 [TokenExchangeGrant]。
+Token Exchange 接受 token type URN `urn:ietf:params:oauth:token-type:access_token` 和 `urn:ietf:params:oauth:token-type:jwt`，请求输出类型默认为 `access_token`。输入须对应有效的本地 authorization。Subject 需要资源所有者身份；Client Credentials token 可以作为 actor，不能作为用户 subject。存在 `may_act` 时必须提交 `actor_token`，其持久化的 `iss` / `sub` claims 必须与 `may_act` 完全匹配，包括各 claim 是否存在。应填写 actor token 定制后的 subject，而非 authorization 的登录名；actor token 带有 issuer 时，`may_act.iss` 也须填写。这不是交换任意外部 JWT 的端点。见 [TokenExchangeRequestParser] 和 [TokenExchangeGrant]。
 
 ```bash
 curl --user 'machine:REPLACE_WITH_CLIENT_SECRET' \

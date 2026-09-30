@@ -17,7 +17,9 @@ public class TokenExchangeJwtCustomizer implements OAuth2TokenCustomizer<JwtEnco
         if (AuthorizationGrantType.PASSWORD.equals(context.getAuthorizationGrantType())
                 && TokenExchangeServerConfig.DELEGATED_SUBJECT_CLIENT.equals(
                         context.getRegisteredClient().getClientId())) {
-            context.getClaims().claim("may_act", Map.of("sub", TokenExchangeServerConfig.ACTOR_CLIENT));
+            context.getClaims().claim("may_act", Map.of(
+                    "iss", context.getAuthorizationServerContext().getIssuer(),
+                    "sub", TokenExchangeServerConfig.ACTOR_CLIENT));
         }
     }
 }

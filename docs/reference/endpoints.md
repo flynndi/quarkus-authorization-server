@@ -91,7 +91,7 @@ Every token request needs one nonblank `grant_type`, the client's configured aut
 
 </div>
 
-Token Exchange accepts the token-type URNs `urn:ietf:params:oauth:token-type:access_token` and `urn:ietf:params:oauth:token-type:jwt`; the requested output type defaults to `access_token`. Inputs must resolve to active local authorizations. A subject needs a resource-owner identity; a Client Credentials token may serve as an actor, not a user subject. Delegation uses `may_act` / `act` checks. This is not an arbitrary external JWT exchange endpoint. See [TokenExchangeRequestParser] and [TokenExchangeGrant].
+Token Exchange accepts the token-type URNs `urn:ietf:params:oauth:token-type:access_token` and `urn:ietf:params:oauth:token-type:jwt`; the requested output type defaults to `access_token`. Inputs must resolve to active local authorizations. A subject needs a resource-owner identity; a Client Credentials token may serve as an actor, not a user subject. When `may_act` is present, an `actor_token` is required and its stored `iss` / `sub` claims must exactly match `may_act`, including whether each claim is present. Use the actor token's customized subject, not its authorization's login name; include `may_act.iss` when the actor token has an issuer. This is not an arbitrary external JWT exchange endpoint. See [TokenExchangeRequestParser] and [TokenExchangeGrant].
 
 ```bash
 curl --user 'machine:REPLACE_WITH_CLIENT_SECRET' \

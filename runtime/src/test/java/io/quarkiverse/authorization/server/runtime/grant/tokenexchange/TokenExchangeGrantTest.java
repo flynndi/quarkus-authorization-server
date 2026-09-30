@@ -258,8 +258,8 @@ class TokenExchangeGrantTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = { "missing", "blank", "non-string" })
-    void rejectsActorWithoutUsableSubjectClaimBeforeIssuance(String kind) {
+    @CsvSource({ "false, missing", "false, blank", "false, non-string", "true, missing", "true, blank", "true, non-string" })
+    void rejectsActorWithoutUsableSubjectClaimBeforeIssuance(boolean restrictActor, String kind) {
         this.authorizationService.add(
                 authorization(
                         this.subjectClient,
@@ -267,7 +267,7 @@ class TokenExchangeGrantTest {
                         "alice",
                         "subject-token",
                         Set.of("message.read"),
-                        Map.of(),
+                        restrictActor ? Map.of("may_act", Map.of("sub", "actor-login")) : Map.of(),
                         user("alice")));
         OAuth2Authorization actor = authorization(
                 this.actorClient,
@@ -309,8 +309,9 @@ class TokenExchangeGrantTest {
         assertEquals(0, this.authorizationService.saveInvocations);
     }
 
-    @Test
-    void capturesActorTokenClaimsWithoutReplacingCustomizedSubjectWithLoginName() {
+    @ParameterizedTest
+    @ValueSource(booleans = { false, true })
+    void capturesActorTokenClaimsWithoutReplacingCustomizedSubjectWithLoginName(boolean restrictActor) {
         this.authorizationService.add(
                 authorization(
                         this.subjectClient,
@@ -318,7 +319,8 @@ class TokenExchangeGrantTest {
                         "alice",
                         "subject-token",
                         Set.of("message.read"),
-                        Map.of(),
+                        restrictActor ? Map.of("may_act", Map.of("iss", "https://actor.example", "sub", "public-actor-subject"))
+                                : Map.of(),
                         user("alice")));
         Map<String, Object> actorClaims = Map.of(
                 "sub",
@@ -436,7 +438,7 @@ class TokenExchangeGrantTest {
     }
 
     @Test
-    void enforcesMayActAgainstActorOrAuthenticatedClient() {
+    void enforcesMayActAgainstActorToken() {
         this.authorizationService.add(
                 authorization(
                         this.subjectClient,
@@ -501,9 +503,46 @@ class TokenExchangeGrantTest {
                         ACCESS_TOKEN_TYPE),
                 OAuth2ErrorCodes.INVALID_GRANT);
 
-        RecordingAuthorizationService directService = new RecordingAuthorizationService();
-        directService.add(
-                authorization(
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "https://actor.example, https://wrong.example, actor-client",
+            "https://actor.example, https://actor.example, different-subject",
+            "https://actor.example, , actor-client",
+            ", https://actor.example, actor-client"
+    })
+    void rejectsMayActIdentityMismatchEvenWhenActorLoginMatches(String expectedIssuer, String actualIssuer,
+            String actualSubject) {
+        Map<String, Object> mayAct = new LinkedHashMap<>(Map.of("sub", "actor-client"));
+        if (expectedIssuer != null) {
+            mayAct.put("iss", expectedIssuer);
+        }
+        Map<String, Object> actorClaims = new LinkedHashMap<>(Map.of("sub", actualSubject));
+        if (actualIssuer != null) {
+            actorClaims.put("iss", actualIssuer);
+        }
+        OAuth2Authorization subject = TokenExchangeGrantTest.authorization(
+                this.subjectClient, "subject", "alice", "subject-token", Set.of("message.read"),
+                Map.of("may_act", mayAct), TokenExchangeGrantTest.user("alice"));
+        OAuth2Authorization actor = TokenExchangeGrantTest.authorization(
+                this.actorClient, "actor", "actor-client", "actor-token", Set.of(), actorClaims, null);
+        this.authorizationService.add(subject);
+        this.authorizationService.add(actor);
+
+        assertError(TokenExchangeGrantTest.authentication(this.exchangeClient, "subject-token", ACCESS_TOKEN_TYPE,
+                "actor-token", ACCESS_TOKEN_TYPE, Set.of(), ACCESS_TOKEN_TYPE), OAuth2ErrorCodes.INVALID_GRANT);
+
+        assertEquals(0, this.tokenGenerator.invocations);
+        assertEquals(0, this.authorizationService.saveInvocations);
+        assertTrue(subject.getAccessToken().isActive());
+        assertTrue(actor.getAccessToken().isActive());
+    }
+
+    @Test
+    void mayActRequiresActorTokenEvenWhenAuthenticatedClientMatches() {
+        this.authorizationService.add(
+                TokenExchangeGrantTest.authorization(
                         this.subjectClient,
                         "direct-subject-authorization",
                         "alice",
@@ -511,21 +550,18 @@ class TokenExchangeGrantTest {
                         Set.of("message.read"),
                         Map.of("may_act", Map.of("sub", "exchange-client")),
                         user("alice")));
-        TokenExchangeGrant directProvider = new TokenExchangeGrant(
-                directService,
-                new RecordingTokenGenerator(),
-                new DefaultAuthorizationServerContext(SETTINGS),
-                DPoPTestSupport.binding());
-        directProvider.exchange(
-                authentication(
+        assertError(
+                TokenExchangeGrantTest.authentication(
                         this.exchangeClient,
                         "direct-subject-token",
                         ACCESS_TOKEN_TYPE,
                         null,
                         null,
                         Set.of(),
-                        ACCESS_TOKEN_TYPE));
-        assertNotNull(directService.saved);
+                        ACCESS_TOKEN_TYPE),
+                OAuth2ErrorCodes.INVALID_GRANT);
+        assertEquals(0, this.tokenGenerator.invocations);
+        assertEquals(0, this.authorizationService.saveInvocations);
     }
 
     @Test

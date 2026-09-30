@@ -26,6 +26,8 @@ import java.util.Set;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
+import org.eclipse.microprofile.jwt.Claims;
+
 import io.quarkiverse.authorization.server.authorization.OAuth2Authorization;
 import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationService;
 import io.quarkiverse.authorization.server.client.RegisteredClient;
@@ -38,7 +40,6 @@ import io.quarkiverse.authorization.server.model.AuthorizationGrantType;
 import io.quarkiverse.authorization.server.model.OAuth2AuthenticationException;
 import io.quarkiverse.authorization.server.model.OAuth2Error;
 import io.quarkiverse.authorization.server.model.OAuth2ErrorCodes;
-import io.quarkiverse.authorization.server.oidc.StandardClaimNames;
 import io.quarkiverse.authorization.server.runtime.authentication.OAuth2AuthenticationProviderUtils;
 import io.quarkiverse.authorization.server.runtime.client.authentication.OAuth2ClientAuthenticationToken;
 import io.quarkiverse.authorization.server.runtime.dpop.DPoPProofRequest;
@@ -126,10 +127,10 @@ public final class TokenExchangeGrant {
             throw new OAuth2AuthenticationException(OAuth2ErrorCodes.INVALID_GRANT);
         }
 
-        String authorizedActorSubject = null;
+        Map<?, ?> authorizedActorClaims = null;
         if (subjectToken.getClaims() != null
                 && subjectToken.getClaims().get(MAY_ACT) instanceof Map<?, ?> mayAct) {
-            authorizedActorSubject = (String) mayAct.get(StandardClaimNames.SUB);
+            authorizedActorClaims = mayAct;
         }
 
         OAuth2Authorization actorAuthorization = null;
@@ -144,12 +145,16 @@ public final class TokenExchangeGrant {
                 throw new OAuth2AuthenticationException(OAuth2ErrorCodes.INVALID_GRANT);
             }
             validateDeclaredTokenType(request.getActorTokenType(), actorToken);
-            if (Arguments.hasText(authorizedActorSubject)
-                    && !authorizedActorSubject.equals(actorAuthorization.getPrincipalName())) {
-                throw new OAuth2AuthenticationException(OAuth2ErrorCodes.INVALID_GRANT);
+            if (authorizedActorClaims != null) {
+                // may_act identifies the actor by token claims, not the application's login name.
+                Map<String, Object> actorClaims = actorToken.getClaims();
+                if (actorClaims == null
+                        || !Objects.equals(authorizedActorClaims.get(Claims.iss.name()), actorClaims.get(Claims.iss.name()))
+                        || !Objects.equals(authorizedActorClaims.get(Claims.sub.name()), actorClaims.get(Claims.sub.name()))) {
+                    throw new OAuth2AuthenticationException(OAuth2ErrorCodes.INVALID_GRANT);
+                }
             }
-        } else if (Arguments.hasText(authorizedActorSubject)
-                && !authorizedActorSubject.equals(clientPrincipal.getPrincipal().getName())) {
+        } else if (authorizedActorClaims != null) {
             throw new OAuth2AuthenticationException(OAuth2ErrorCodes.INVALID_GRANT);
         }
 
@@ -237,7 +242,7 @@ public final class TokenExchangeGrant {
         // Preserve token claims, including a customized sub, instead of substituting a login name.
         Map<String, Object> actorClaims = actorAuthorization.getAccessToken().getClaims();
         if (actorClaims == null
-                || !(actorClaims.get(StandardClaimNames.SUB) instanceof String subject)
+                || !(actorClaims.get(Claims.sub.name()) instanceof String subject)
                 || subject.isBlank()) {
             throw new OAuth2AuthenticationException(OAuth2ErrorCodes.INVALID_GRANT);
         }

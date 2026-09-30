@@ -125,8 +125,12 @@ public final class DeviceConsentService {
             if (!requestedScopes.isEmpty()) {
                 deny(authorization);
             }
+            authorizedScopes.clear();
         } else {
             OAuth2AuthorizationConsent authorizationConsent = authorizationConsentBuilder.build();
+            // Apply the final consent to token issuance, excluding scopes unrelated to this request.
+            authorizedScopes = new HashSet<>(authorizationConsent.getScopes());
+            authorizedScopes.retainAll(requestedScopes);
             if (!authorizationConsent.equals(currentAuthorizationConsent)) {
                 this.authorizationConsentService.save(authorizationConsent);
             }

@@ -15,6 +15,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import io.quarkiverse.authorization.server.authorization.InMemoryOAuth2AuthorizationConsentService;
 import io.quarkiverse.authorization.server.authorization.InMemoryOAuth2AuthorizationService;
@@ -419,6 +421,81 @@ class DeviceVerificationServiceTest {
         assertEquals(
                 Set.of("message.read", "message.write"),
                 test.authorizations.findById(test.authorizationId).getAuthorizedScopes());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = { false, true })
+    void customizedScopesReplaceSubmittedAndPreviouslyApprovedScopes(boolean hasPreviousConsent) {
+        OAuth2AuthorizationConsent previous = hasPreviousConsent
+                ? OAuth2AuthorizationConsent.withId(client().getId(), "resource-owner")
+                        .scope("message.write").scope("historical").build()
+                : null;
+        TestContext test = context(Set.of("message.read", "message.write"), previous);
+        SecurityIdentity principal = identity("resource-owner", false);
+        ConfirmationRequired confirmation = consent(test, principal);
+        var service = new DeviceConsentService(
+                new InMemoryRegisteredClientRepository(client()), test.authorizations, test.consents,
+                java.util.List.of(context -> {
+                    context.authorizationConsent().authorities(authorities -> authorities.remove("SCOPE_message.write"));
+                    context.authorizationConsent().scope("unrequested");
+                }));
+
+        service.consent(new DeviceConsentSubmission(
+                confirmation.clientId(), principal, confirmation.userCode(), confirmation.state(),
+                true, Set.of("message.read", "message.write"), Map.of()));
+
+        OAuth2Authorization approved = test.authorizations.findById(test.authorizationId);
+        assertEquals(Set.of("message.read"), approved.getAuthorizedScopes());
+        assertEquals(hasPreviousConsent ? Set.of("message.read", "historical", "unrequested")
+                : Set.of("message.read", "unrequested"),
+                test.consents.findById(client().getId(), "resource-owner").getScopes());
+        assertFalse(approved.getToken(OAuth2UserCode.class).isActive());
+        assertTrue(approved.getToken(OAuth2DeviceCode.class).isActive());
+        assertNull(approved.getAttribute(OAuth2ParameterNames.STATE));
+        assertNull(approved.getAttribute(OAuth2ParameterNames.SCOPE));
+    }
+
+    @Test
+    void retainingOnlyNonScopeAuthoritiesDoesNotRestoreSubmittedScopes() {
+        TestContext test = context(Set.of("message.read"), null);
+        SecurityIdentity principal = identity("resource-owner", false);
+        ConfirmationRequired confirmation = consent(test, principal);
+        var service = new DeviceConsentService(
+                new InMemoryRegisteredClientRepository(client()), test.authorizations, test.consents,
+                java.util.List.of(context -> {
+                    context.authorizationConsent().authorities(Set::clear);
+                    context.authorizationConsent().authority("device:approved");
+                }));
+
+        service.consent(new DeviceConsentSubmission(
+                confirmation.clientId(), principal, confirmation.userCode(), confirmation.state(),
+                true, Set.of("message.read"), Map.of()));
+
+        assertTrue(test.authorizations.findById(test.authorizationId).getAuthorizedScopes().isEmpty());
+        assertEquals(Set.of("device:approved"),
+                test.consents.findById(client().getId(), "resource-owner").getAuthorities());
+    }
+
+    @Test
+    void clearingAllAuthoritiesDeniesDeviceAndPreservesHistoricalConsent() {
+        OAuth2AuthorizationConsent previous = OAuth2AuthorizationConsent.withId(client().getId(), "resource-owner")
+                .scope("message.read").build();
+        TestContext test = context(Set.of("message.read"), previous);
+        SecurityIdentity principal = identity("resource-owner", false);
+        ConfirmationRequired confirmation = consent(test, principal);
+        var service = new DeviceConsentService(
+                new InMemoryRegisteredClientRepository(client()), test.authorizations, test.consents,
+                java.util.List.of(context -> context.authorizationConsent().authorities(Set::clear)));
+
+        assertError(service, new DeviceConsentSubmission(
+                confirmation.clientId(), principal, confirmation.userCode(), confirmation.state(),
+                true, Set.of("message.read"), Map.of()), OAuth2ErrorCodes.ACCESS_DENIED);
+
+        OAuth2Authorization denied = test.authorizations.findById(test.authorizationId);
+        assertTrue(denied.getAuthorizedScopes().isEmpty());
+        assertFalse(denied.getToken(OAuth2DeviceCode.class).isActive());
+        assertFalse(denied.getToken(OAuth2UserCode.class).isActive());
+        assertEquals(previous, test.consents.findById(client().getId(), "resource-owner"));
     }
 
     @Test

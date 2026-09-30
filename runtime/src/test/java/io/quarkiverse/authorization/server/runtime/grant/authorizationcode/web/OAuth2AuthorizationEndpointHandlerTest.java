@@ -9,6 +9,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
+import jakarta.enterprise.inject.Instance;
+
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,6 +24,7 @@ import io.quarkiverse.authorization.server.context.DefaultAuthorizationServerCon
 import io.quarkiverse.authorization.server.model.AuthorizationGrantType;
 import io.quarkiverse.authorization.server.model.OAuth2Error;
 import io.quarkiverse.authorization.server.model.OAuth2ErrorCodes;
+import io.quarkiverse.authorization.server.oidc.session.OidcSessionManager;
 import io.quarkiverse.authorization.server.runtime.config.TestOidcConfig;
 import io.quarkiverse.authorization.server.runtime.grant.authorizationcode.authorization.AuthorizationConsentProcessor;
 import io.quarkiverse.authorization.server.runtime.grant.authorizationcode.authorization.AuthorizationOutcome;
@@ -32,10 +35,9 @@ import io.quarkiverse.authorization.server.runtime.grant.authorizationcode.autho
 import io.quarkiverse.authorization.server.runtime.grant.authorizationcode.authorization.DefaultAuthorizationCodeGenerator;
 import io.quarkiverse.authorization.server.runtime.grant.authorizationcode.authorization.DefaultAuthorizationConsentPolicy;
 import io.quarkiverse.authorization.server.runtime.http.converter.OAuth2ErrorHttpMessageConverter;
+import io.quarkiverse.authorization.server.runtime.web.ProtocolExecutor;
 import io.quarkiverse.authorization.server.settings.AuthorizationServerSettings;
-import io.quarkus.security.identity.SecurityIdentity;
-import io.quarkus.security.runtime.QuarkusPrincipal;
-import io.quarkus.security.runtime.QuarkusSecurityIdentity;
+import io.quarkus.vertx.http.runtime.CurrentVertxRequest;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.ext.web.RoutingContext;
@@ -44,9 +46,6 @@ class OAuth2AuthorizationEndpointHandlerTest {
 
     private static final TestOidcConfig OIDC_CONFIG = new TestOidcConfig(false, false);
 
-    private static final SecurityIdentity PRINCIPAL = QuarkusSecurityIdentity.builder()
-            .setPrincipal(new QuarkusPrincipal("resource-owner"))
-            .build();
     private static final AuthorizationServerSettings AUTHORIZATION_SERVER_SETTINGS = AuthorizationServerSettings.builder()
             .issuer("https://issuer.example.com").build();
 
@@ -79,7 +78,9 @@ class OAuth2AuthorizationEndpointHandlerTest {
                     })),
             new DefaultConsentPage(),
             null,
-            new OAuth2ErrorHttpMessageConverter(new ObjectMapper()));
+            new OAuth2ErrorHttpMessageConverter(new ObjectMapper()),
+            new ProtocolExecutor(new CurrentVertxRequest()),
+            OAuth2AuthorizationEndpointHandlerTest.noSessionManager());
 
     @Test
     void redirectsSuccessfulAuthorizationResponse() {
@@ -138,6 +139,19 @@ class OAuth2AuthorizationEndpointHandlerTest {
                 "{\"error\":\"invalid_request\",\"error_description\":\"Invalid request\"}",
                 capture.body);
         assertFalse(capture.headers.containsKey(HttpHeaders.LOCATION.toString()));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Instance<OidcSessionManager> noSessionManager() {
+        return (Instance<OidcSessionManager>) Proxy.newProxyInstance(
+                OAuth2AuthorizationEndpointHandlerTest.class.getClassLoader(),
+                new Class<?>[] { Instance.class },
+                (proxy, method, arguments) -> {
+                    if ("isUnsatisfied".equals(method.getName())) {
+                        return true;
+                    }
+                    throw new UnsupportedOperationException(method.toString());
+                });
     }
 
     private static RoutingContext context(ResponseCapture capture) {

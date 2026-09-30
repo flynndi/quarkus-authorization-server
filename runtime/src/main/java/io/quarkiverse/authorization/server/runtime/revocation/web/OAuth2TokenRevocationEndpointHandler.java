@@ -26,8 +26,8 @@ import io.quarkiverse.authorization.server.model.OAuth2Error;
 import io.quarkiverse.authorization.server.model.OAuth2ErrorCodes;
 import io.quarkiverse.authorization.server.runtime.http.converter.OAuth2ErrorHttpMessageConverter;
 import io.quarkiverse.authorization.server.runtime.revocation.authentication.OAuth2TokenRevocationAuthenticationProvider;
+import io.quarkiverse.authorization.server.runtime.web.ProtocolExecutor;
 import io.quarkiverse.authorization.server.runtime.web.authentication.OAuth2ErrorAuthenticationFailureHandler;
-import io.quarkus.vertx.VertxContextSupport;
 import io.vertx.core.Handler;
 import io.vertx.ext.web.RoutingContext;
 
@@ -42,13 +42,15 @@ public final class OAuth2TokenRevocationEndpointHandler implements Handler<Routi
     private final OAuth2TokenRevocationAuthenticationConverter authenticationConverter = new OAuth2TokenRevocationAuthenticationConverter();
     private final Instance<OAuth2TokenRevocationAuthenticationProvider> authenticationProvider;
     private final OAuth2ErrorAuthenticationFailureHandler authenticationFailureHandler;
+    private final ProtocolExecutor executor;
 
     @Inject
     public OAuth2TokenRevocationEndpointHandler(
             Instance<OAuth2TokenRevocationAuthenticationProvider> authenticationProvider,
-            OAuth2ErrorHttpMessageConverter errorResponseConverter) {
+            OAuth2ErrorHttpMessageConverter errorResponseConverter, ProtocolExecutor executor) {
         this.authenticationProvider = authenticationProvider;
         this.authenticationFailureHandler = new OAuth2ErrorAuthenticationFailureHandler(errorResponseConverter);
+        this.executor = executor;
     }
 
     @Override
@@ -60,7 +62,7 @@ public final class OAuth2TokenRevocationEndpointHandler implements Handler<Routi
 
         try {
             var authentication = this.authenticationConverter.convert(context);
-            VertxContextSupport.executeBlocking(() -> this.authenticationProvider.get().authenticate(authentication))
+            this.executor.execute(context, () -> this.authenticationProvider.get().authenticate(authentication))
                     .subscribe().with(
                             result -> context.response().setStatusCode(HttpResponseStatus.OK.code()).end(),
                             failure -> sendError(context, failure));

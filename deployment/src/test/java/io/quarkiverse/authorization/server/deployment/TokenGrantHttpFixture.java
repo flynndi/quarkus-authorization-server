@@ -13,13 +13,15 @@ import io.vertx.ext.web.RoutingContext;
 final class TokenGrantHttpFixture {
     static RoutingContext context(Map<String, String> parameters, SecurityIdentity identity) {
         MultiMap form = MultiMap.caseInsensitiveMultiMap();
+        MultiMap headers = MultiMap.caseInsensitiveMultiMap();
         parameters.forEach(form::add);
         HttpServerRequest request = (HttpServerRequest) Proxy.newProxyInstance(
                 HttpServerRequest.class.getClassLoader(),
                 new Class<?>[] { HttpServerRequest.class },
                 (proxy, method, args) -> switch (method.getName()) {
                     case "formAttributes" -> form;
-                    case "headers" -> MultiMap.caseInsensitiveMultiMap();
+                    case "headers" -> headers;
+                    case "getHeader" -> headers.get((String) args[0]);
                     case "toString" -> "TokenGrantHttpFixture request";
                     default ->
                         throw new UnsupportedOperationException(

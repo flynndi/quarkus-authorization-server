@@ -4,11 +4,14 @@ import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +34,7 @@ import org.jboss.shrinkwrap.api.asset.StringAsset;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import io.quarkiverse.authorization.server.authorization.InMemoryOAuth2AuthorizationService;
@@ -49,8 +53,12 @@ import io.quarkiverse.authorization.server.grant.refreshtoken.RefreshTokenReques
 import io.quarkiverse.authorization.server.grant.tokenexchange.TokenExchangeRequest;
 import io.quarkiverse.authorization.server.model.AuthorizationGrantType;
 import io.quarkiverse.authorization.server.model.ClientAuthenticationMethod;
+import io.quarkiverse.authorization.server.model.OAuth2AuthenticationException;
 import io.quarkiverse.authorization.server.oidc.OidcIdToken;
+import io.quarkiverse.authorization.server.runtime.client.authentication.JwtClientAssertionAuthenticationRequest;
 import io.quarkiverse.authorization.server.runtime.client.authentication.OAuth2ClientAuthenticationToken;
+import io.quarkiverse.authorization.server.runtime.client.authentication.X509ClientCertificateAuthenticationRequest;
+import io.quarkiverse.authorization.server.runtime.security.OAuth2AccessTokenAuthenticationRequest;
 import io.quarkiverse.authorization.server.settings.ClientSettings;
 import io.quarkiverse.authorization.server.settings.OAuth2TokenFormat;
 import io.quarkiverse.authorization.server.token.JwtEncodingContext;
@@ -64,14 +72,20 @@ import io.quarkiverse.authorization.server.web.TokenGrantHandler;
 import io.quarkus.arc.Arc;
 import io.quarkus.runtime.BlockingOperationControl;
 import io.quarkus.security.AuthenticationFailedException;
+import io.quarkus.security.credential.CertificateCredential;
+import io.quarkus.security.credential.TokenCredential;
 import io.quarkus.security.identity.AuthenticationRequestContext;
 import io.quarkus.security.identity.IdentityProvider;
+import io.quarkus.security.identity.IdentityProviderManager;
 import io.quarkus.security.identity.SecurityIdentity;
+import io.quarkus.security.identity.request.AuthenticationRequest;
 import io.quarkus.security.identity.request.UsernamePasswordAuthenticationRequest;
 import io.quarkus.security.runtime.QuarkusPrincipal;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.quarkus.test.QuarkusUnitTest;
 import io.quarkus.test.common.http.TestHTTPResource;
+import io.quarkus.vertx.http.runtime.CurrentVertxRequest;
+import io.quarkus.vertx.http.runtime.security.HttpSecurityUtils;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import io.smallrye.common.vertx.VertxContext;
@@ -79,6 +93,7 @@ import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.subscription.Cancellable;
 import io.vertx.core.Context;
 import io.vertx.core.Vertx;
+import io.vertx.ext.web.RoutingContext;
 
 class OAuth2ProtocolRequestContextTest {
     private static final int TIMEOUT = 10;
@@ -103,6 +118,7 @@ class OAuth2ProtocolRequestContextTest {
                             ResourceOwners.class)
                             .addAsResource("privateKey.pem")
                             .addAsResource("publicKey.pem")
+                            .addAsResource("mtls/self-client.pem")
                             .addAsResource(
                                     new StringAsset(
                                             """
@@ -122,6 +138,10 @@ class OAuth2ProtocolRequestContextTest {
     Instance<TokenGrantHandler> handlers;
     @Inject
     Vertx vertx;
+    @Inject
+    IdentityProviderManager identities;
+    @Inject
+    CurrentVertxRequest currentRequest;
     @TestHTTPResource
     URI baseUri;
 
@@ -278,6 +298,97 @@ class OAuth2ProtocolRequestContextTest {
         assertTrue(flow.visits.stream().noneMatch(v -> v.stage().equals("customize")));
     }
 
+    @ParameterizedTest
+    @CsvSource({
+            "BASIC, true", "BASIC, false", "PUBLIC, true", "PUBLIC, false",
+            "JWT, true", "JWT, false", "X509, true", "X509, false", "ACCESS_TOKEN, true", "ACCESS_TOKEN, false"
+    })
+    void identityProvidersSupportRequestsWithAndWithoutHttpContext(String provider, boolean withHttp)
+            throws Exception {
+        Flow flow = create(provider.equals("PUBLIC") ? Mode.PUBLIC_CODE : Mode.CODE);
+        // Reject after repository access to isolate the execution boundary from credential validation.
+        flow.rejectCredential = true;
+        flow.httpRequest = withHttp;
+        AuthenticationRequest authentication;
+        if (provider.equals("X509")) {
+            try (var pem = getClass().getClassLoader().getResourceAsStream("mtls/self-client.pem")) {
+                var certificate = (X509Certificate) CertificateFactory.getInstance("X.509").generateCertificate(pem);
+                authentication = new X509ClientCertificateAuthenticationRequest(flow.id,
+                        new CertificateCredential(certificate));
+            }
+        } else {
+            authentication = switch (provider) {
+                case "BASIC" -> new OAuth2ClientAuthenticationToken(flow.id,
+                        ClientAuthenticationMethod.CLIENT_SECRET_BASIC, "secret");
+                case "PUBLIC" -> new OAuth2ClientAuthenticationToken(flow.id, ClientAuthenticationMethod.NONE, null);
+                case "JWT" -> new JwtClientAssertionAuthenticationRequest(flow.id, "unused");
+                case "ACCESS_TOKEN" -> new OAuth2AccessTokenAuthenticationRequest(
+                        new TokenCredential(flow.id + "-access", "bearer"));
+                default -> throw new IllegalArgumentException(provider);
+            };
+        }
+        if (withHttp) {
+            var http = TokenGrantHttpFixture.context(Map.of(), identity("alice"));
+            http.request().headers().set("X-Request-Id", flow.id);
+            HttpSecurityUtils.setRoutingContextAttribute(authentication, http);
+        }
+        CompletableFuture<Throwable> completed = new CompletableFuture<>();
+        Context context = VertxContext.createNewDuplicatedContext(this.vertx.getOrCreateContext());
+        context.runOnContext(ignored -> {
+            try {
+                assertFalse(Arc.container().requestContext().isActive());
+                this.identities.authenticate(authentication).subscribe().with(
+                        result -> completed.completeExceptionally(new AssertionError("Authentication must fail")),
+                        completed::complete);
+            } catch (Throwable failure) {
+                completed.completeExceptionally(failure);
+            }
+        });
+        var failure = assertInstanceOf(OAuth2AuthenticationException.class, completed.get(TIMEOUT, TimeUnit.SECONDS));
+        assertEquals(provider.equals("ACCESS_TOKEN") ? "invalid_token" : "invalid_client",
+                failure.getError().getErrorCode());
+        assertReleased(flow);
+        assertEquals(0, flow.saves.get());
+    }
+
+    @Test
+    void programmaticAuthenticationPreservesCallerOwnedHttpContext() throws Exception {
+        Flow flow = create(Mode.CODE);
+        flow.httpRequest = true;
+        var authentication = new OAuth2ClientAuthenticationToken(flow.id,
+                ClientAuthenticationMethod.CLIENT_SECRET_BASIC, "secret");
+        var http = TokenGrantHttpFixture.context(Map.of(), identity("alice"));
+        http.request().headers().set("X-Request-Id", flow.id);
+        CompletableFuture<Void> completed = new CompletableFuture<>();
+        Context context = VertxContext.createNewDuplicatedContext(this.vertx.getOrCreateContext());
+        context.runOnContext(ignored -> {
+            var requestScope = Arc.container().requestContext();
+            requestScope.activate();
+            var ownedState = requestScope.getState();
+            this.currentRequest.setCurrent(http);
+            this.identities.authenticate(authentication).subscribe().with(result -> {
+                try {
+                    assertEquals(flow.id, result.getPrincipal().getName());
+                    assertTrue(Context.isOnEventLoopThread());
+                    assertSame(ownedState, requestScope.getState());
+                    assertSame(http, this.currentRequest.getCurrent());
+                    assertTrue(flow.scopes.values().stream().allMatch(scope -> scope.destructions.get() == 0));
+                    requestScope.terminate();
+                    completed.complete(null);
+                } catch (Throwable failure) {
+                    requestScope.terminate();
+                    completed.completeExceptionally(failure);
+                }
+            }, failure -> {
+                requestScope.terminate();
+                completed.completeExceptionally(failure);
+            });
+        });
+        completed.get(TIMEOUT, TimeUnit.SECONDS);
+        assertReleased(flow);
+        assertSameScope(flow, "client", "secret");
+    }
+
     @Test
     void repeatedAuthenticationAndProtocolPhasesDoNotLeakRequestScopes() throws Exception {
         for (int iteration = 0; iteration < 10; iteration++) {
@@ -395,7 +506,9 @@ class OAuth2ProtocolRequestContextTest {
     }
 
     private Response request(Flow flow) {
-        var request = given().baseUri(baseUri.toString()).contentType(ContentType.URLENC);
+        flow.httpRequest = true;
+        var request = given().baseUri(baseUri.toString()).contentType(ContentType.URLENC)
+                .header("X-Request-Id", flow.id);
         if (flow.mode == Mode.USERINFO) {
             return request.header("Authorization", "Bearer " + flow.id + "-access")
                     .get("/userinfo");
@@ -571,6 +684,7 @@ class OAuth2ProtocolRequestContextTest {
         volatile String failAt;
         volatile boolean delayIdentity;
         volatile boolean rejectCredential;
+        volatile boolean httpRequest;
         volatile Context identityContext;
         volatile char[] credentials;
 
@@ -622,6 +736,8 @@ class OAuth2ProtocolRequestContextTest {
 
     @RequestScoped
     public static class RequestState {
+        @Inject
+        RoutingContext http;
         final String id = UUID.randomUUID().toString();
         Scope scope;
         Flow flow;
@@ -631,6 +747,9 @@ class OAuth2ProtocolRequestContextTest {
             assertTrue(BlockingOperationControl.isBlockingAllowed());
             assertFalse(Context.isOnEventLoopThread());
             assertTrue(VertxContext.isDuplicatedContext(Vertx.currentContext()));
+            if (flow.httpRequest) {
+                assertEquals(flow.id, this.http.request().getHeader("X-Request-Id"));
+            }
             if (this.flow == null) {
                 this.flow = flow;
                 this.scope = new Scope();

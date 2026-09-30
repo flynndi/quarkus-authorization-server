@@ -10,12 +10,12 @@ import io.quarkiverse.authorization.server.model.ClientAuthenticationMethod;
 import io.quarkiverse.authorization.server.model.OAuth2AuthenticationException;
 import io.quarkiverse.authorization.server.model.OAuth2Error;
 import io.quarkiverse.authorization.server.model.OAuth2ErrorCodes;
+import io.quarkiverse.authorization.server.runtime.web.ProtocolExecutor;
 import io.quarkus.security.identity.AuthenticationRequestContext;
 import io.quarkus.security.identity.IdentityProvider;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.runtime.QuarkusPrincipal;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
-import io.quarkus.vertx.VertxContextSupport;
 import io.smallrye.mutiny.Uni;
 
 /** Resolves a registered public client. Each grant validates its own authorization proof. */
@@ -26,11 +26,13 @@ public final class PublicClientAuthenticationProvider
     private static final String ERROR_URI = "https://datatracker.ietf.org/doc/html/rfc6749#section-3.2.1";
 
     private final RegisteredClientRepository registeredClientRepository;
+    private final ProtocolExecutor executor;
 
     @Inject
     public PublicClientAuthenticationProvider(
-            RegisteredClientRepository registeredClientRepository) {
+            RegisteredClientRepository registeredClientRepository, ProtocolExecutor executor) {
         this.registeredClientRepository = registeredClientRepository;
+        this.executor = executor;
     }
 
     @Override
@@ -45,7 +47,7 @@ public final class PublicClientAuthenticationProvider
             return Uni.createFrom().nullItem();
         }
 
-        return VertxContextSupport.executeBlocking(() -> authenticateClient(authentication));
+        return this.executor.execute(authentication, () -> authenticateClient(authentication));
     }
 
     // The lazy Quarkus boundary schedules work after the Uni has been assembled,

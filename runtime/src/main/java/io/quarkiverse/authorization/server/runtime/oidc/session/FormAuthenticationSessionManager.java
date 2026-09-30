@@ -35,6 +35,7 @@ import io.vertx.ext.web.RoutingContext;
 @DefaultBean
 public final class FormAuthenticationSessionManager implements OidcSessionManager {
     private final PersistentLoginManager loginManager;
+    private final String formCookieName;
     private final String cookieName;
     private final String cookiePath;
     private final String cookieDomain;
@@ -43,7 +44,8 @@ public final class FormAuthenticationSessionManager implements OidcSessionManage
     @Inject
     public FormAuthenticationSessionManager(VertxHttpConfig config) {
         FormAuthConfig form = config.auth().form();
-        this.cookieName = form.cookieName() + ".oidc";
+        this.formCookieName = form.cookieName();
+        this.cookieName = this.formCookieName + ".oidc";
         this.cookiePath = form.cookiePath().orElse("/");
         this.cookieDomain = form.cookieDomain().orElse(null);
         // Domain separation prevents swapping Form and OIDC cookies, even with a shared configured key.
@@ -97,15 +99,21 @@ public final class FormAuthenticationSessionManager implements OidcSessionManage
     @Override
     public void logout(RoutingContext context, SecurityIdentity principal) {
         if (context.get(HttpAuthenticationMechanism.class.getName()) instanceof FormAuthenticationMechanism) {
-            FormAuthenticationMechanism.logout(context);
-            Cookie cookie = Cookie.cookie(this.cookieName, "").setPath(this.cookiePath)
-                    .setMaxAge(0).setHttpOnly(true).setSecure(context.request().isSSL());
-            if (this.cookieDomain != null) {
-                cookie.setDomain(this.cookieDomain);
-            }
-            context.response().addCookie(cookie);
+            this.expireCookie(context, this.formCookieName);
+            this.expireCookie(context, this.cookieName);
             QuarkusHttpUser.setIdentity(QuarkusSecurityIdentity.builder().setAnonymous(true).build(), context);
         }
+    }
+
+    private void expireCookie(RoutingContext context, String name) {
+        // Quarkus Form logout omits Domain. Match the issuance tuple so Vert.x also replaces
+        // any renewal queued by Form authentication or getSessionInformation on this request.
+        Cookie cookie = Cookie.cookie(name, "").setPath(this.cookiePath)
+                .setMaxAge(0).setHttpOnly(true).setSecure(context.request().isSSL());
+        if (this.cookieDomain != null) {
+            cookie.setDomain(this.cookieDomain);
+        }
+        context.response().addCookie(cookie);
     }
 
     private static String hash(String value) {

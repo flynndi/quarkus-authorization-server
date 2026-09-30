@@ -9,14 +9,10 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.net.URI;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.jboss.shrinkwrap.api.asset.StringAsset;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -26,40 +22,21 @@ import io.restassured.response.Response;
 class OidcLogoutEndpointTest {
     private static final String REDIRECT = "https://client.example/callback";
     private static final String POST_LOGOUT = "https://client.example/bye?existing=1";
-    private static final String CHALLENGE = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
-    private static final String VERIFIER = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
 
     @RegisterExtension
-    static final QuarkusUnitTest unitTest = new QuarkusUnitTest().withApplicationRoot(jar -> jar
-            .addClasses(LogoutTestApplication.class, LogoutTestApplication.PasswordProvider.class,
-                    LogoutTestApplication.TrustedProvider.class)
-            .addAsResource(new StringAsset("""
-                    quarkus.http.root-path=/api
-                    quarkus.http.auth.form.enabled=true
-                    quarkus.http.auth.form.cookie-name=login
-                    quarkus.http.auth.form.cookie-path=/api
-                    quarkus.http.auth.form.landing-page=
-                    quarkus.http.auth.form.error-page=
-                    quarkus.http.auth.form.login-page=/api/login
-                    quarkus.http.auth.form.new-cookie-interval=0S
-                    quarkus.http.auth.session.encryption-key=oidc-logout-test-encryption-key
-                    quarkus.authorization-server.issuer=http://localhost:8081/api
-                    quarkus.authorization-server.oidc.enabled=true
-                    quarkus.authorization-server.oidc-logout-endpoint=/bye
-                    quarkus.authorization-server.clients.client.client-secret=%s
-                    quarkus.authorization-server.clients.client.authorization-grant-types=authorization_code,refresh_token
-                    quarkus.authorization-server.clients.client.redirect-uris=https://client.example/callback
-                    quarkus.authorization-server.clients.client.post-logout-redirect-uris=https://client.example/bye?existing=1
-                    quarkus.authorization-server.clients.client.scopes=openid,profile
-                    """.formatted(io.quarkus.elytron.security.common.BcryptUtil.bcryptHash("secret"))),
-                    "application.properties"));
+    static final QuarkusUnitTest unitTest = new QuarkusUnitTest().withApplicationRoot(OidcLogoutTestSupport::application);
+
+    @Test
+    void logoutExpiresHostOnlyCookiesEvenWhenAuthenticationRenewsThem() throws Exception {
+        OidcLogoutTestSupport.assertLogoutExpiresCookies(true);
+    }
 
     @Test
     void formLoginCodeRefreshUserInfoLogoutAndLoginAgain() {
         long before = Instant.now().getEpochSecond();
         Map<String, String> cookies = login("alice");
         assertNotNull(cookies.get("login.oidc"));
-        Response tokens = tokens(cookies);
+        Response tokens = OidcLogoutTestSupport.tokens(cookies);
         Map<String, Object> id = claims(tokens.path("id_token"));
         assertTrue(((Number) id.get("auth_time")).longValue() >= before);
         assertTrue(((Number) id.get("auth_time")).longValue() <= Instant.now().getEpochSecond());
@@ -95,15 +72,15 @@ class OidcLogoutEndpointTest {
         // Ending the browser session does not revoke issued access tokens.
         given().header("Authorization", "Bearer " + refreshed.<String> path("access_token")).get("/userinfo")
                 .then().statusCode(200);
-        assertNotEquals(id.get("sid"), claims(tokens(login("alice")).path("id_token")).get("sid"));
+        assertNotEquals(id.get("sid"), claims(OidcLogoutTestSupport.tokens(login("alice")).path("id_token")).get("sid"));
     }
 
     @Test
     void sameLoginKeepsSidAndAuthenticationTimeButAnotherLoginCannotUseItsHint() {
         Map<String, String> first = login("alice");
-        Response firstTokens = tokens(first);
+        Response firstTokens = OidcLogoutTestSupport.tokens(first);
         Map<String, Object> firstClaims = claims(firstTokens.path("id_token"));
-        Map<String, Object> secondClaims = claims(tokens(first).path("id_token"));
+        Map<String, Object> secondClaims = claims(OidcLogoutTestSupport.tokens(first).path("id_token"));
         assertEquals(firstClaims.get("sid"), secondClaims.get("sid"));
         assertEquals(firstClaims.get("auth_time"), secondClaims.get("auth_time"));
         for (Map<String, String> other : java.util.List.of(login("alice"), login("bob"))) {
@@ -117,7 +94,7 @@ class OidcLogoutEndpointTest {
     void metadataAnonymousHintAndParameterFailures() {
         given().get("/.well-known/openid-configuration").then().statusCode(200)
                 .body("end_session_endpoint", equalTo("http://localhost:8081/api/bye"));
-        String hint = tokens(login("alice")).path("id_token");
+        String hint = OidcLogoutTestSupport.tokens(login("alice")).path("id_token");
         given().redirects().follow(false).queryParam("id_token_hint", hint)
                 .queryParam("post_logout_redirect_uri", POST_LOGOUT).get("/bye")
                 .then().statusCode(302).header("Location", equalTo(POST_LOGOUT));
@@ -147,11 +124,11 @@ class OidcLogoutEndpointTest {
                         Map.of("response_type", "code", "client_id", "client", "redirect_uri", REDIRECT, "scope", "openid"))
                 .get("/oauth2/authorize").then().statusCode(302);
         cookies.remove("login.oidc");
-        Map<String, Object> claims = claims(tokens(cookies).path("id_token"));
+        Map<String, Object> claims = claims(OidcLogoutTestSupport.tokens(cookies).path("id_token"));
         assertFalse(claims.containsKey("auth_time"));
         assertFalse(claims.containsKey("sid"));
         cookies.put("login.oidc", "tampered");
-        assertFalse(claims(tokens(cookies).path("id_token")).containsKey("auth_time"));
+        assertFalse(claims(OidcLogoutTestSupport.tokens(cookies).path("id_token")).containsKey("auth_time"));
         given().contentType("application/x-www-form-urlencoded").formParam("j_username", "alice")
                 .formParam("j_password", "wrong").post("/j_security_check")
                 .then().statusCode(401);
@@ -161,21 +138,6 @@ class OidcLogoutEndpointTest {
         return new LinkedHashMap<>(given().contentType("application/x-www-form-urlencoded").formParam("j_username", username)
                 .formParam("j_password", "password").post("/j_security_check")
                 .then().statusCode(200).extract().cookies());
-    }
-
-    static Response tokens(Map<String, String> cookies) {
-        Response response = given().cookies(cookies).redirects().follow(false)
-                .queryParam("response_type", "code").queryParam("client_id", "client")
-                .queryParam("redirect_uri", REDIRECT).queryParam("scope", "openid profile")
-                .queryParam("nonce", "request-nonce").queryParam("code_challenge", CHALLENGE)
-                .queryParam("code_challenge_method", "S256").get("/oauth2/authorize")
-                .then().statusCode(302).extract().response();
-        String query = URI.create(response.header("Location")).getRawQuery();
-        String code = java.util.Arrays.stream(query.split("&")).filter(value -> value.startsWith("code="))
-                .map(value -> URLDecoder.decode(value.substring(5), StandardCharsets.UTF_8)).findFirst().orElseThrow();
-        return given().auth().preemptive().basic("client", "secret").contentType("application/x-www-form-urlencoded")
-                .formParam("grant_type", "authorization_code").formParam("code", code).formParam("redirect_uri", REDIRECT)
-                .formParam("code_verifier", VERIFIER).post("/oauth2/token").then().statusCode(200).extract().response();
     }
 
     static Map<String, Object> claims(String jwt) {

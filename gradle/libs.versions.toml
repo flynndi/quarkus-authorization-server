@@ -5,6 +5,7 @@ spotless = "8.10.2"
 eclipse-formatter = "4.35"
 
 [libraries]
+agroal-api = { module = "io.agroal:agroal-api" }
 jose4j = { module = "org.bitbucket.b_c:jose4j" }
 h2 = { module = "com.h2database:h2" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
@@ -12,7 +13,6 @@ junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher
 quarkus-arc = { module = "io.quarkus:quarkus-arc" }
 quarkus-arc-deployment = { module = "io.quarkus:quarkus-arc-deployment" }
 quarkus-agroal = { module = "io.quarkus:quarkus-agroal" }
-quarkus-agroal-deployment = { module = "io.quarkus:quarkus-agroal-deployment" }
 quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
 quarkus-config-yaml = { module = "io.quarkus:quarkus-config-yaml" }
 quarkus-core-deployment = { module = "io.quarkus:quarkus-core-deployment" }

@@ -4,7 +4,9 @@
 
 ## 通过 CDI 接入 JDBC 仓储
 
-添加对应数据库的 Quarkus JDBC driver，例如 `io.quarkus:quarkus-jdbc-postgresql`，并配置数据源：
+同一个 `quarkus-authorization-server` 扩展包含内存仓储、JDBC 实现、序列化和 SQL 资源，不会自动引入 Agroal 或 JTA。内存仓储无需数据库组件，自定义存储的依赖由应用选择。JDBC 实现接受标准 `javax.sql.DataSource`，由应用按照下文提供仓储 Bean。
+
+使用 Quarkus 托管的数据源时，显式添加 `io.quarkus:quarkus-agroal` 和对应数据库的 Quarkus JDBC driver，例如 `io.quarkus:quarkus-jdbc-postgresql`，并配置数据源：
 
 ```properties
 quarkus.datasource.db-kind=postgresql
@@ -65,6 +67,8 @@ public class AuthorizationStorage {
 ## 理解事务边界
 
 JDBC 仓储是同步 API。扩展在 worker 上执行协议工作，自定义调用方也必须使用允许阻塞的上下文。
+
+应用显式引入 `quarkus-agroal` 后，可使用 Quarkus 管理的连接池与事务集成。只有 Agroal API 存在时，仓储才检测 Agroal 的事务参与状态；直接使用普通 JDBC `DataSource` 不要求 Agroal。
 
 Agroal 连接已加入外部 JTA 事务时，遵循外层事务；否则每次仓储写操作使用独立本地事务。扩展不自动把整个 grant 包进事务，也不承诺并发请求下严格原子单次消费。应用的事务边界必须覆盖真正执行 JDBC 的同步工作，仅包住响应式操作的创建过程不够。
 

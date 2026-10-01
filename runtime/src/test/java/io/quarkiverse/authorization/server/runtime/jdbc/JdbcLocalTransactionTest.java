@@ -15,6 +15,7 @@ import java.util.UUID;
 import javax.sql.DataSource;
 
 import org.h2.jdbcx.JdbcDataSource;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
@@ -27,6 +28,15 @@ import io.quarkiverse.authorization.server.jdbc.JdbcRegisteredClientRepository;
 import io.quarkiverse.authorization.server.model.AuthorizationGrantType;
 
 class JdbcLocalTransactionTest {
+
+    @Test
+    void plainJdbcTestsRunWithoutAgroalOrJta() {
+        ClassLoader classLoader = JdbcLocalTransactionTest.class.getClassLoader();
+        assertThrows(ClassNotFoundException.class,
+                () -> Class.forName("io.agroal.api.AgroalDataSource", false, classLoader));
+        assertThrows(ClassNotFoundException.class,
+                () -> Class.forName("io.quarkus.narayana.jta.QuarkusTransaction", false, classLoader));
+    }
 
     @ParameterizedTest
     @EnumSource(Repository.class)

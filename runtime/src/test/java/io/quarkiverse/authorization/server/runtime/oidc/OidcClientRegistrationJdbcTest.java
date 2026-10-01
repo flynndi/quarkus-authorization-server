@@ -149,7 +149,11 @@ class OidcClientRegistrationJdbcTest {
         } else {
             request.tokenEndpointAuthenticationSigningAlgorithm("HS512");
         }
-        var client = this.toClient.convert(request.build());
+        var generated = this.toClient.convert(request.build());
+        // Keep this metadata round-trip test within the schema's timestamp precision.
+        var client = RegisteredClient.from(generated)
+                .clientIdIssuedAt(generated.getClientIdIssuedAt().truncatedTo(ChronoUnit.MICROS))
+                .build();
         this.repository.save(client);
         var restored = new JdbcRegisteredClientRepository(this.dataSource).findByClientId(client.getClientId());
         assertEquals(client, restored);

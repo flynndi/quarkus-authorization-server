@@ -191,6 +191,12 @@ class AuthorizationServerProcessor {
     }
 
     @BuildStep
+    RuntimeInitializedClassBuildItem initializeClientJwkSetUrlPolicyAtRuntime() {
+        // Parsed CIDR ranges retain InetAddress instances, which must not enter the native image heap.
+        return new RuntimeInitializedClassBuildItem(ClientJwkSetUrlPolicy.class.getName());
+    }
+
+    @BuildStep
     void initializeProtocolRandomnessAtRuntime(BuildProducer<RuntimeInitializedClassBuildItem> runtimeInitialization) {
         // Defer the owning classes' static initializers so each process creates its SecureRandom instances at runtime.
         // Otherwise their static fields make build-time random state reachable from the native image heap.

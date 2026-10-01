@@ -21,25 +21,21 @@ import java.util.HashSet;
 import java.util.Set;
 
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 
 final class UnmodifiableSetDeserializer extends JsonDeserializer<Set<?>> {
 
     @Override
     public Set<?> deserialize(JsonParser parser, DeserializationContext context) throws IOException {
-        ObjectMapper objectMapper = (ObjectMapper) parser.getCodec();
-        JsonNode node = objectMapper.readTree(parser);
         Set<Object> result = new HashSet<>();
-        if (node instanceof ArrayNode arrayNode) {
-            for (JsonNode elementNode : arrayNode) {
-                result.add(objectMapper.readValue(elementNode.traverse(objectMapper), Object.class));
+        if (parser.isExpectedStartArrayToken()) {
+            while (parser.nextToken() != JsonToken.END_ARRAY) {
+                result.add(context.readValue(parser, Object.class));
             }
-        } else if (node != null) {
-            result.add(objectMapper.readValue(node.traverse(objectMapper), Object.class));
+        } else {
+            result.add(context.readValue(parser, Object.class));
         }
         return Collections.unmodifiableSet(result);
     }

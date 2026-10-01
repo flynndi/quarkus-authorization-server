@@ -15,6 +15,7 @@ import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 
 import io.quarkiverse.authorization.server.client.RegisteredClient;
+import io.quarkiverse.authorization.server.jdbc.JdbcJsonCodec;
 import io.quarkiverse.authorization.server.jdbc.JdbcOAuth2AuthorizationConsentService;
 import io.quarkiverse.authorization.server.jdbc.JdbcOAuth2AuthorizationService;
 import io.quarkiverse.authorization.server.jdbc.JdbcRegisteredClientRepository;
@@ -36,20 +37,23 @@ public class TenantConfiguration {
     @Produces
     @Singleton
     @Identifier("alpha")
-    AuthorizationServerTenant alpha(@io.quarkus.agroal.DataSource("alpha") DataSource dataSource) throws Exception {
-        return TenantConfiguration.create("alpha", dataSource);
+    AuthorizationServerTenant alpha(@io.quarkus.agroal.DataSource("alpha") DataSource dataSource, JdbcJsonCodec jsonCodec)
+            throws Exception {
+        return TenantConfiguration.create("alpha", dataSource, jsonCodec);
     }
 
     @Produces
     @Singleton
     @Identifier("beta")
-    AuthorizationServerTenant beta(@io.quarkus.agroal.DataSource("beta") DataSource dataSource) throws Exception {
-        return TenantConfiguration.create("beta", dataSource);
+    AuthorizationServerTenant beta(@io.quarkus.agroal.DataSource("beta") DataSource dataSource, JdbcJsonCodec jsonCodec)
+            throws Exception {
+        return TenantConfiguration.create("beta", dataSource, jsonCodec);
     }
 
-    private static AuthorizationServerTenant create(String tenant, DataSource dataSource) throws Exception {
+    private static AuthorizationServerTenant create(String tenant, DataSource dataSource, JdbcJsonCodec jsonCodec)
+            throws Exception {
         TenantConfiguration.initializeSchema(dataSource);
-        var clients = new JdbcRegisteredClientRepository(dataSource);
+        var clients = new JdbcRegisteredClientRepository(dataSource, jsonCodec);
         if (clients.findByClientId("shared") == null) {
             clients.save(RegisteredClient.withId("same-id").clientId("shared").clientName(tenant + " demo")
                     .clientSecret(BcryptUtil.bcryptHash(tenant + "-secret"))
@@ -63,7 +67,7 @@ public class TenantConfiguration {
         // Demo keys are checked-in test material. A real application supplies its own key source.
         var key = new AuthorizationServerKeySource.Key(tenant, SignatureAlgorithm.RS256,
                 KeyUtils.readPrivateKey(tenant + "-private.pem"), KeyUtils.readPublicKey(tenant + "-public.pem"));
-        return new AuthorizationServerTenant(clients, new JdbcOAuth2AuthorizationService(dataSource, clients),
+        return new AuthorizationServerTenant(clients, new JdbcOAuth2AuthorizationService(dataSource, clients, jsonCodec),
                 new JdbcOAuth2AuthorizationConsentService(dataSource, clients),
                 () -> new AuthorizationServerKeySource.KeySet(List.of(key), tenant));
     }

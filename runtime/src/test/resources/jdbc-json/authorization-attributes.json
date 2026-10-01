@@ -1,0 +1,29 @@
+{
+  "kind": "authorization-attributes",
+  "data": {
+    "identity": {
+      "principalName": "alice",
+      "roles": ["reader"],
+      "actors": [{"sub": "actor", "iss": "https://actor.example"}]
+    },
+    "authorizationRequest": {
+      "authorizationUri": "https://issuer.example/oauth2/authorize",
+      "grantType": "authorization_code",
+      "responseType": "code",
+      "clientId": "client",
+      "redirectUri": "https://client.example/callback",
+      "state": "request-state",
+      "authorizationRequestUri": "https://issuer.example/oauth2/authorize?original=query",
+      "scopes": ["openid", "read"],
+      "additionalParameters": {"code_challenge": "challenge", "code_challenge_method": "S256"},
+      "attributes": {"request-id": "request-1"}
+    },
+    "session": {
+      "principalName": "alice",
+      "sessionId": "session-1",
+      "authenticationTime": "2030-01-01T00:00:00.123456789Z"
+    },
+    "pushedRequestExpiresAt": "2030-01-01T00:05:00.123456789Z",
+    "extensions": {"state": "consent-state"}
+  }
+}

@@ -43,7 +43,7 @@ public final class OAuth2TokenExchangeTokenCustomizers {
         return getActors(identity == null ? Map.of() : identity.getAttributes());
     }
 
-    /** The same protocol contract for Jackson's already-bound identity attributes. */
+    /** The same protocol contract for identity attributes read from storage. */
     public static List<Map<String, Object>> getActors(Map<String, Object> attributes) {
         Object value = attributes.get(ACTORS_ATTRIBUTE);
         if (value == null && !attributes.containsKey(ACTORS_ATTRIBUTE))

@@ -63,8 +63,9 @@ class OidcClientRegistrationJdbcRestartIT {
                                 "select access_token_metadata, refresh_token_metadata from oauth2_authorization where id = 'initial-restart'")) {
                     assertTrue(rows.next());
                     for (int column = 1; column <= 2; column++) {
-                        var metadata = new JsonPath(new String(rows.getBytes(column), StandardCharsets.UTF_8)).getMap("$");
-                        assertEquals(Boolean.TRUE, metadata.get("metadata.token.invalidated"));
+                        var metadata = new JsonPath(new String(rows.getBytes(column), StandardCharsets.UTF_8));
+                        assertEquals("token-metadata", metadata.getString("kind"));
+                        assertEquals(Boolean.TRUE, metadata.getBoolean("data.invalidated"));
                     }
                 }
             }

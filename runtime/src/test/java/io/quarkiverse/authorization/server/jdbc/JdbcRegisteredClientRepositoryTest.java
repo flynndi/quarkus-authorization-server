@@ -25,10 +25,11 @@ import io.quarkiverse.authorization.server.settings.TokenSettings;
 class JdbcRegisteredClientRepositoryTest {
 
     private JdbcRegisteredClientRepository repository;
+    private JdbcDataSource dataSource;
 
     @BeforeEach
     void setUp() {
-        JdbcDataSource dataSource = new JdbcDataSource();
+        this.dataSource = new JdbcDataSource();
         dataSource.setURL("jdbc:h2:mem:" + UUID.randomUUID()
                 + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE");
         JdbcTestSupport.executeSchema(dataSource, JdbcRegisteredClientRepository.SCHEMA_LOCATION);
@@ -99,14 +100,21 @@ class JdbcRegisteredClientRepositoryTest {
     }
 
     @Test
-    void replacesObjectMapper() {
-        this.repository.setObjectMapper(JdbcTestSupport.objectMapper());
-        RegisteredClient registeredClient = passwordClient("custom-mapper-registration", "custom-mapper-client");
-
-        this.repository.save(registeredClient);
-
-        assertEquals(registeredClient, this.repository.findById(registeredClient.getId()));
-        assertThrows(NullPointerException.class, () -> this.repository.setObjectMapper(null));
+    void persistsCustomSettingsWithAnExplicitCodecAcrossRepositoryInstances() {
+        JdbcRegisteredClientRepository writer = new JdbcRegisteredClientRepository(this.dataSource,
+                JdbcTestSupport.jsonCodec());
+        RegisteredClient client = RegisteredClient.from(passwordClient("custom-codec", "custom-client"))
+                .clientSettings(io.quarkiverse.authorization.server.settings.ClientSettings.builder()
+                        .setting("custom", new JdbcTestSupport.CustomValue("client-data")).build())
+                .tokenSettings(io.quarkiverse.authorization.server.settings.TokenSettings.builder()
+                        .setting("custom", new JdbcTestSupport.CustomValue("token-data")).build())
+                .build();
+        writer.save(client);
+        JdbcRegisteredClientRepository reader = new JdbcRegisteredClientRepository(this.dataSource,
+                JdbcTestSupport.jsonCodec());
+        assertEquals(client, reader.findById(client.getId()));
+        assertThrows(IllegalArgumentException.class, () -> this.repository.findById(client.getId()));
+        assertThrows(NullPointerException.class, () -> new JdbcRegisteredClientRepository(this.dataSource, null));
     }
 
     private static RegisteredClient passwordClient(String id, String clientId) {

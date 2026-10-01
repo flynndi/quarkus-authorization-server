@@ -18,6 +18,7 @@ import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationCons
 import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationService;
 import io.quarkiverse.authorization.server.client.RegisteredClient;
 import io.quarkiverse.authorization.server.client.RegisteredClientRepository;
+import io.quarkiverse.authorization.server.jdbc.JdbcJsonCodec;
 import io.quarkiverse.authorization.server.jdbc.JdbcOAuth2AuthorizationConsentService;
 import io.quarkiverse.authorization.server.jdbc.JdbcOAuth2AuthorizationService;
 import io.quarkiverse.authorization.server.jdbc.JdbcRegisteredClientRepository;
@@ -36,15 +37,15 @@ public class AuthorizationServerPersistence {
 
     @Produces
     @Singleton
-    public RegisteredClientRepository registeredClientRepository(DataSource dataSource) {
-        return new JdbcRegisteredClientRepository(dataSource);
+    public RegisteredClientRepository registeredClientRepository(DataSource dataSource, JdbcJsonCodec jsonCodec) {
+        return new JdbcRegisteredClientRepository(dataSource, jsonCodec);
     }
 
     @Produces
     @Singleton
     public OAuth2AuthorizationService authorizationService(DataSource dataSource,
-            RegisteredClientRepository registeredClientRepository) {
-        return new JdbcOAuth2AuthorizationService(dataSource, registeredClientRepository);
+            RegisteredClientRepository registeredClientRepository, JdbcJsonCodec jsonCodec) {
+        return new JdbcOAuth2AuthorizationService(dataSource, registeredClientRepository, jsonCodec);
     }
 
     @Produces

@@ -46,6 +46,6 @@ Authorization records can retain a historical `SecurityIdentity`. The JDBC repre
 
 Consequently, refreshing a token does not automatically reload current user roles or account status. If immediate revocation or fresh entitlements are required, implement that policy with your user service and token/resource checks. A claim copied from the authorization is a snapshot, not a live user-directory query.
 
-See [`SecurityIdentityJacksonBuilder`](https://github.com/flynndi/quarkus-authorization-server/blob/main/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/jackson2/SecurityIdentityJacksonBuilder.java) and [storage and signing keys](./storage-and-keys).
+See [`JdbcJsonCodec`](https://github.com/flynndi/quarkus-authorization-server/blob/main/runtime/src/main/java/io/quarkiverse/authorization/server/jdbc/JdbcJsonCodec.java) and [storage and signing keys](./storage-and-keys).
 
 Default implementations, qualifiers and composition rules are indexed in [CDI extension points](/reference/extensions).

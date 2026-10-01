@@ -22,6 +22,7 @@ import javax.sql.DataSource;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 import io.quarkiverse.authorization.server.jdbc.JdbcRegisteredClientRepository;
+import io.quarkiverse.authorization.server.jdbc.JdbcJsonCodec;
 import io.quarkiverse.authorization.server.client.RegisteredClientRepository;
 import io.quarkiverse.authorization.server.jdbc.JdbcOAuth2AuthorizationService;
 import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationService;
@@ -32,14 +33,14 @@ import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationCons
 public class AuthorizationStorage {
     @Produces
     @Singleton
-    RegisteredClientRepository clients(DataSource dataSource) {
-        return new JdbcRegisteredClientRepository(dataSource);
+    RegisteredClientRepository clients(DataSource dataSource, JdbcJsonCodec jsonCodec) {
+        return new JdbcRegisteredClientRepository(dataSource, jsonCodec);
     }
 
     @Produces
     @Singleton
-    OAuth2AuthorizationService authorizations(DataSource dataSource, RegisteredClientRepository clients) {
-        return new JdbcOAuth2AuthorizationService(dataSource, clients);
+    OAuth2AuthorizationService authorizations(DataSource dataSource, RegisteredClientRepository clients, JdbcJsonCodec jsonCodec) {
+        return new JdbcOAuth2AuthorizationService(dataSource, clients, jsonCodec);
     }
 
     @Produces
@@ -63,6 +64,35 @@ When loading a script from code, use the corresponding JDBC implementation's `SC
 The examples initialize embedded H2 themselves. Their startup schema helpers are demonstration code, not a production migration service. PostgreSQL configuration above illustrates datasource wiring; it is not evidence of a PostgreSQL migration test.
 
 Source: [`AuthorizationServerPersistence`](https://github.com/flynndi/quarkus-authorization-server/blob/main/examples/authorization-code/src/main/java/io/quarkiverse/authorization/server/example/authorizationcode/authorizationserver/config/AuthorizationServerPersistence.java).
+
+## JDBC JSON codec
+
+`JdbcOAuth2AuthorizationService` and `JdbcRegisteredClientRepository` use `JdbcJsonCodec` for authorization attributes, token metadata, client settings and token settings. SQL columns and transaction boundaries are unchanged. The codec replaces the class-typed Jackson modules and their domain/collection reflection registrations.
+
+The codec owns an isolated mapper and reads/writes JSON trees explicitly. Each document contains `kind` (the column's purpose) and `data`. There is no `formatVersion` or dependency on the library release version. For example:
+
+```json
+{
+  "kind": "token-metadata",
+  "data": {
+    "invalidated": false,
+    "claims": {
+      "nbf": { "type": "instant", "value": "2030-01-01T00:00:00Z" }
+    },
+    "extensions": {}
+  }
+}
+```
+
+Known fields use stable names such as `identity`, `authorizationRequest`, `session` and `tokenFormat`; the codec translates runtime attribute keys at the boundary. Identities contain only the principal name, roles and validated actor claims. Reading reconstructs a Quarkus `SecurityIdentity`, without credentials, request attributes or permission checkers.
+
+Extension values support strings, booleans, null, the standard numeric wrappers, `BigInteger`, `BigDecimal`, `Instant`, `Duration`, string-keyed maps, lists, sets and the supported protocol value types. Values requiring type recovery use logical `type`/`value` envelopes; numeric payloads use text to preserve precision, scale and numeric type. Maps also have an explicit envelope, so business keys named `type` and `value` cannot be interpreted as codec metadata. Collections are restored as immutable interfaces, independently of their original Java implementation. Known setting fields use plain booleans and strings; omitted settings receive domain defaults.
+
+The extension provides a `@Singleton` / `@DefaultBean` codec and collects application `@Default JdbcJsonValueAdapter<?>` CDI beans. Pass the injected codec to both repositories as shown above. Without CDI, the original constructors use a default codec; pass `new JdbcJsonCodec(adapters)` explicitly for custom values. An application producer can replace the default codec assembly. There is no `setObjectMapper()` entry point or application-wide Jackson customization. Beans with a custom qualifier such as `@Identifier` are reserved for explicit assembly and are not collected by the default codec. Adapter IDs start with `custom:`; duplicate IDs/classes and attempts to replace built-in types are rejected. Adapter payloads must be ordinary JSON trees, never Jackson POJO nodes. Unknown types, malformed protocol fields, duplicate JSON keys and excessive nesting fail explicitly. `nbf` must be restored as an `Instant`, preserving the token's not-before check.
+
+Before returning encoded JSON, the codec parses it with the same private mapper used for reading. Jackson limits such as number, string and field-name length therefore fail before persistence; this adds one JSON parse per encoded document and does not invoke application adapters.
+
+The codec deliberately does not read old class-typed JSON. Recreate disposable development data when adopting this change; the extension does not migrate or delete existing rows. Fixed samples for all four column kinds are maintained in [`runtime/src/test/resources/jdbc-json`](https://github.com/flynndi/quarkus-authorization-server/tree/main/runtime/src/test/resources/jdbc-json).
 
 ## Understand transaction boundaries
 

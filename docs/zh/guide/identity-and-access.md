@@ -46,6 +46,6 @@ Token 需要应用角色时，通过 [token customizer](./tokens-and-resources#�
 
 因此刷新 token 不会自动重查当前用户角色和账号状态。业务要求立即失效或使用最新权限时，应结合用户服务及 token/资源检查实现对应策略。从授权记录复制的 claim 是快照，不是实时用户查询。
 
-见 [`SecurityIdentityJacksonBuilder`](https://github.com/flynndi/quarkus-authorization-server/blob/main/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/jackson2/SecurityIdentityJacksonBuilder.java)和[存储与签名密钥](./storage-and-keys)。
+见 [`JdbcJsonCodec`](https://github.com/flynndi/quarkus-authorization-server/blob/main/runtime/src/main/java/io/quarkiverse/authorization/server/jdbc/JdbcJsonCodec.java)和[存储与签名密钥](./storage-and-keys)。
 
 默认实现、qualifier 和组合规则集中列在 [CDI 扩展点](/zh/reference/extensions)。

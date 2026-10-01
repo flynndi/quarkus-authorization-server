@@ -15,10 +15,6 @@ import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-
 import io.quarkiverse.authorization.server.authorization.OAuth2Authorization;
 import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationCode;
 import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationService;
@@ -28,7 +24,6 @@ import io.quarkiverse.authorization.server.endpoint.OAuth2ParameterNames;
 import io.quarkiverse.authorization.server.model.AuthorizationGrantType;
 import io.quarkiverse.authorization.server.oidc.OidcIdToken;
 import io.quarkiverse.authorization.server.oidc.endpoint.OidcParameterNames;
-import io.quarkiverse.authorization.server.runtime.jackson2.OAuth2AuthorizationServerJackson2Module;
 import io.quarkiverse.authorization.server.runtime.jdbc.JdbcTransactionSupport;
 import io.quarkiverse.authorization.server.runtime.util.Arguments;
 import io.quarkiverse.authorization.server.token.OAuth2AccessToken;
@@ -37,8 +32,6 @@ import io.quarkiverse.authorization.server.token.OAuth2RefreshToken;
 import io.quarkiverse.authorization.server.token.OAuth2Token;
 import io.quarkiverse.authorization.server.token.OAuth2TokenType;
 import io.quarkiverse.authorization.server.token.OAuth2UserCode;
-import io.quarkus.security.identity.SecurityIdentity;
-import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 
 /**
  * JDBC implementation of {@link OAuth2AuthorizationService} using an application-provided {@link DataSource}.
@@ -80,31 +73,30 @@ public final class JdbcOAuth2AuthorizationService implements OAuth2Authorization
 
     private final DataSource dataSource;
     private final RegisteredClientRepository registeredClientRepository;
-    private ObjectMapper objectMapper = new ObjectMapper();
+    private final JdbcJsonCodec jsonCodec;
 
     public JdbcOAuth2AuthorizationService(DataSource dataSource,
             RegisteredClientRepository registeredClientRepository) {
+        this(dataSource, registeredClientRepository, new JdbcJsonCodec());
+    }
+
+    public JdbcOAuth2AuthorizationService(DataSource dataSource,
+            RegisteredClientRepository registeredClientRepository, JdbcJsonCodec jsonCodec) {
         this.dataSource = Objects.requireNonNull(dataSource, "dataSource cannot be null");
         this.registeredClientRepository = Objects.requireNonNull(
                 registeredClientRepository, "registeredClientRepository cannot be null");
-        this.objectMapper.registerModule(new JavaTimeModule());
-        this.objectMapper.registerModule(new OAuth2AuthorizationServerJackson2Module());
-    }
-
-    public final void setObjectMapper(ObjectMapper objectMapper) {
-        this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper cannot be null");
+        this.jsonCodec = Objects.requireNonNull(jsonCodec, "jsonCodec cannot be null");
     }
 
     @Override
     public void save(OAuth2Authorization authorization) {
-        OAuth2Authorization persistable = normalizeIdentity(
-                Objects.requireNonNull(authorization, "authorization cannot be null"));
+        Objects.requireNonNull(authorization, "authorization cannot be null");
         inTransaction(
                 connection -> {
-                    if (!existsById(connection, persistable.getId())) {
-                        insert(connection, persistable);
+                    if (!existsById(connection, authorization.getId())) {
+                        insert(connection, authorization);
                     } else {
-                        update(connection, persistable);
+                        update(connection, authorization);
                     }
                     return null;
                 },
@@ -178,7 +170,8 @@ public final class JdbcOAuth2AuthorizationService implements OAuth2Authorization
         statement.setString(index++, authorization.getPrincipalName());
         statement.setString(index++, authorization.getAuthorizationGrantType().getValue());
         statement.setString(index++, join(authorization.getAuthorizedScopes()));
-        statement.setString(index++, writeMap(authorization.getAttributes()));
+        statement.setString(index++,
+                this.jsonCodec.writeAuthorizationAttributes(authorization.getPrincipalName(), authorization.getAttributes()));
         Object state = authorization.getAttributes().get(OAuth2ParameterNames.STATE);
         statement.setString(index++, state instanceof String stringState ? stringState : null);
 
@@ -202,7 +195,7 @@ public final class JdbcOAuth2AuthorizationService implements OAuth2Authorization
         statement.setString(index++, oauth2Token.getTokenValue());
         setTimestamp(statement, index++, oauth2Token.getIssuedAt());
         setTimestamp(statement, index++, oauth2Token.getExpiresAt());
-        statement.setString(index++, writeMap(token.getMetadata()));
+        statement.setString(index++, this.jsonCodec.writeTokenMetadata(token.getMetadata()));
         return index;
     }
 
@@ -281,7 +274,7 @@ public final class JdbcOAuth2AuthorizationService implements OAuth2Authorization
             throw new IllegalStateException(
                     "The registered client associated with the authorization was not found");
         }
-        Map<String, Object> attributes = parseMap(row.attributes());
+        Map<String, Object> attributes = this.jsonCodec.readAuthorizationAttributes(row.principalName(), row.attributes());
         OAuth2Authorization.Builder builder = OAuth2Authorization.withRegisteredClient(registeredClient)
                 .id(row.id())
                 .principalName(row.principalName())
@@ -295,7 +288,7 @@ public final class JdbcOAuth2AuthorizationService implements OAuth2Authorization
                     authorizationCodeValue,
                     row.authorizationCodeIssuedAt(),
                     row.authorizationCodeExpiresAt());
-            Map<String, Object> metadata = parseMap(row.authorizationCodeMetadata());
+            Map<String, Object> metadata = this.jsonCodec.readTokenMetadata(row.authorizationCodeMetadata());
             builder.token(authorizationCode, values -> values.putAll(metadata));
         }
 
@@ -309,12 +302,12 @@ public final class JdbcOAuth2AuthorizationService implements OAuth2Authorization
                     row.accessTokenIssuedAt(),
                     row.accessTokenExpiresAt(),
                     split(row.accessTokenScopes()));
-            Map<String, Object> metadata = parseMap(row.accessTokenMetadata());
+            Map<String, Object> metadata = this.jsonCodec.readTokenMetadata(row.accessTokenMetadata());
             builder.token(accessToken, values -> values.putAll(metadata));
         }
 
         if (row.idTokenValue() != null && !row.idTokenValue().isBlank()) {
-            Map<String, Object> metadata = parseMap(row.idTokenMetadata());
+            Map<String, Object> metadata = this.jsonCodec.readTokenMetadata(row.idTokenMetadata());
             @SuppressWarnings("unchecked")
             Map<String, Object> claims = (Map<String, Object>) metadata.get(
                     OAuth2Authorization.Token.CLAIMS_METADATA_NAME);
@@ -329,7 +322,7 @@ public final class JdbcOAuth2AuthorizationService implements OAuth2Authorization
                     refreshTokenValue,
                     row.refreshTokenIssuedAt(),
                     row.refreshTokenExpiresAt());
-            Map<String, Object> metadata = parseMap(row.refreshTokenMetadata());
+            Map<String, Object> metadata = this.jsonCodec.readTokenMetadata(row.refreshTokenMetadata());
             builder.token(refreshToken, values -> values.putAll(metadata));
         }
 
@@ -337,7 +330,7 @@ public final class JdbcOAuth2AuthorizationService implements OAuth2Authorization
         if (userCodeValue != null && !userCodeValue.isBlank()) {
             OAuth2UserCode userCode = new OAuth2UserCode(
                     userCodeValue, row.userCodeIssuedAt(), row.userCodeExpiresAt());
-            Map<String, Object> metadata = parseMap(row.userCodeMetadata());
+            Map<String, Object> metadata = this.jsonCodec.readTokenMetadata(row.userCodeMetadata());
             builder.token(userCode, values -> values.putAll(metadata));
         }
 
@@ -345,51 +338,10 @@ public final class JdbcOAuth2AuthorizationService implements OAuth2Authorization
         if (deviceCodeValue != null && !deviceCodeValue.isBlank()) {
             OAuth2DeviceCode deviceCode = new OAuth2DeviceCode(
                     deviceCodeValue, row.deviceCodeIssuedAt(), row.deviceCodeExpiresAt());
-            Map<String, Object> metadata = parseMap(row.deviceCodeMetadata());
+            Map<String, Object> metadata = this.jsonCodec.readTokenMetadata(row.deviceCodeMetadata());
             builder.token(deviceCode, values -> values.putAll(metadata));
         }
-        return normalizeIdentity(builder.build());
-    }
-
-    // This is a historical authorization snapshot, not authentication of the current HTTP request.
-    private static OAuth2Authorization normalizeIdentity(OAuth2Authorization authorization) {
-        Object principal = authorization.getAttribute(SecurityIdentity.class.getName());
-        if (principal == null
-                && !authorization.getAttributes().containsKey(SecurityIdentity.class.getName()))
-            return authorization;
-        if (!(principal instanceof SecurityIdentity identity)
-                || identity.isAnonymous()
-                || identity.getPrincipal() == null
-                || !authorization.getPrincipalName().equals(identity.getPrincipal().getName())) {
-            throw new IllegalArgumentException(
-                    "Authorization identity must match principalName and be authenticated");
-        }
-        // Use Quarkus' copy builder for decorated identities; only this exact type has JDBC Jackson
-        // bindings.
-        return identity.getClass() == QuarkusSecurityIdentity.class
-                ? authorization
-                : OAuth2Authorization.from(authorization)
-                        .attribute(
-                                SecurityIdentity.class.getName(),
-                                QuarkusSecurityIdentity.builder(identity).build())
-                        .build();
-    }
-
-    private Map<String, Object> parseMap(String data) {
-        try {
-            return this.objectMapper.readValue(data, new TypeReference<>() {
-            });
-        } catch (Exception exception) {
-            throw new IllegalArgumentException(exception.getMessage(), exception);
-        }
-    }
-
-    private String writeMap(Map<String, Object> data) {
-        try {
-            return this.objectMapper.writeValueAsString(data);
-        } catch (Exception exception) {
-            throw new IllegalArgumentException(exception.getMessage(), exception);
-        }
+        return builder.build();
     }
 
     private <T> T withConnection(SqlFunction<Connection, T> work, String operation) {

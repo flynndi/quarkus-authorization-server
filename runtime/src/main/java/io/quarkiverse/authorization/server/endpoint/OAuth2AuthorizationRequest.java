@@ -24,6 +24,9 @@ import io.quarkiverse.authorization.server.runtime.util.Arguments;
  */
 public final class OAuth2AuthorizationRequest implements Serializable {
 
+    /** Authorization attribute containing the expiration Instant of a stored pushed authorization request. */
+    public static final String PUSHED_REQUEST_EXPIRES_AT_ATTRIBUTE_NAME = "oauth2.pushed-request.expires-at";
+
     @Serial
     private static final long serialVersionUID = -8949741830727886963L;
 

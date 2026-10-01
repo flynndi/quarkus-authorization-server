@@ -6,23 +6,44 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 
 import javax.sql.DataSource;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 
-import io.quarkiverse.authorization.server.runtime.jackson2.OAuth2AuthorizationServerJackson2Module;
+import io.quarkiverse.authorization.server.jdbc.JdbcJsonCodec;
+import io.quarkiverse.authorization.server.jdbc.JdbcJsonValueAdapter;
 
 public final class JdbcTestSupport {
 
     private JdbcTestSupport() {
     }
 
-    public static ObjectMapper objectMapper() {
-        return new ObjectMapper()
-                .registerModule(new JavaTimeModule())
-                .registerModule(new OAuth2AuthorizationServerJackson2Module());
+    public static JdbcJsonCodec jsonCodec() {
+        return new JdbcJsonCodec(List.of(new JdbcJsonValueAdapter<CustomValue>() {
+            public String typeId() {
+                return "custom:test-value";
+            }
+
+            public Class<CustomValue> javaType() {
+                return CustomValue.class;
+            }
+
+            public JsonNode write(CustomValue value) {
+                return TextNode.valueOf(value.value());
+            }
+
+            public CustomValue read(JsonNode value) {
+                if (!value.isTextual())
+                    throw new IllegalArgumentException("Expected custom value text");
+                return new CustomValue(value.textValue());
+            }
+        }));
+    }
+
+    public record CustomValue(String value) {
     }
 
     public static void executeSchema(DataSource dataSource, String location) {

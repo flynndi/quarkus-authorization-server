@@ -18,7 +18,6 @@ import io.quarkiverse.authorization.server.model.OAuth2ErrorCodes;
 /** PAR persistence using the existing authorization repository; no browser or client credentials are stored. */
 final class PushedAuthorizationRequests {
     static final String URI_PREFIX = "urn:ietf:params:oauth:request_uri:";
-    static final String EXPIRES_AT_ATTRIBUTE = PushedAuthorizationRequests.class.getName() + ".expiresAt";
     private static final long LIFETIME_SECONDS = 300;
 
     private final OAuth2AuthorizationService authorizations;
@@ -43,7 +42,9 @@ final class PushedAuthorizationRequests {
         this.authorizations.save(OAuth2Authorization.withRegisteredClient(client).id(id)
                 .principalName(client.getClientId()).authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .attribute(OAuth2AuthorizationRequest.class.getName(), savedRequest)
-                .attribute(EXPIRES_AT_ATTRIBUTE, Instant.now().plusSeconds(LIFETIME_SECONDS)).build());
+                .attribute(OAuth2AuthorizationRequest.PUSHED_REQUEST_EXPIRES_AT_ATTRIBUTE_NAME,
+                        Instant.now().plusSeconds(LIFETIME_SECONDS))
+                .build());
         // Use the record id, not consent's state index: a PAR reference cannot be submitted as consent state.
         return new PushedAuthorizationResponse(URI_PREFIX + id, LIFETIME_SECONDS);
     }
@@ -56,7 +57,8 @@ final class PushedAuthorizationRequests {
         }
         OAuth2Authorization authorization = this.authorizations.findById(uri.substring(URI_PREFIX.length()));
         if (authorization == null
-                || !(authorization.getAttribute(EXPIRES_AT_ATTRIBUTE) instanceof Instant expiresAt)
+                || !(authorization.getAttribute(
+                        OAuth2AuthorizationRequest.PUSHED_REQUEST_EXPIRES_AT_ATTRIBUTE_NAME) instanceof Instant expiresAt)
                 || !(authorization
                         .getAttribute(OAuth2AuthorizationRequest.class.getName()) instanceof OAuth2AuthorizationRequest request)
                 || !request.getClientId().equals(reference.getClientId())) {

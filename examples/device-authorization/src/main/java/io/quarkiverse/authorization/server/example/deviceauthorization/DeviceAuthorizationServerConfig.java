@@ -14,6 +14,7 @@ import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationCons
 import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationService;
 import io.quarkiverse.authorization.server.client.RegisteredClient;
 import io.quarkiverse.authorization.server.client.RegisteredClientRepository;
+import io.quarkiverse.authorization.server.jdbc.JdbcJsonCodec;
 import io.quarkiverse.authorization.server.jdbc.JdbcOAuth2AuthorizationConsentService;
 import io.quarkiverse.authorization.server.jdbc.JdbcOAuth2AuthorizationService;
 import io.quarkiverse.authorization.server.jdbc.JdbcRegisteredClientRepository;
@@ -40,14 +41,15 @@ public class DeviceAuthorizationServerConfig {
 
     @Produces
     @Singleton
-    RegisteredClientRepository clients(DataSource dataSource) {
-        return new JdbcRegisteredClientRepository(dataSource);
+    RegisteredClientRepository clients(DataSource dataSource, JdbcJsonCodec jsonCodec) {
+        return new JdbcRegisteredClientRepository(dataSource, jsonCodec);
     }
 
     @Produces
     @Singleton
-    OAuth2AuthorizationService authorizations(DataSource dataSource, RegisteredClientRepository clients) {
-        return new JdbcOAuth2AuthorizationService(dataSource, clients);
+    OAuth2AuthorizationService authorizations(DataSource dataSource, RegisteredClientRepository clients,
+            JdbcJsonCodec jsonCodec) {
+        return new JdbcOAuth2AuthorizationService(dataSource, clients, jsonCodec);
     }
 
     @Produces

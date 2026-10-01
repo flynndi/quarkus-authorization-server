@@ -7,13 +7,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.GeneralSecurityException;
-import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.X509EncodedKeySpec;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -155,9 +151,8 @@ public final class ConfiguredAuthorizationServerKeySource implements Authorizati
 
     private static PrivateKey readPrivateKey(String location, SignatureAlgorithm algorithm) {
         try {
-            byte[] encoded = decodePem(read(location), "PRIVATE KEY");
-            return KeyFactory.getInstance(keyFactoryAlgorithm(algorithm))
-                    .generatePrivate(new PKCS8EncodedKeySpec(encoded));
+            return KeyUtils.decodePrivateKey(read(location),
+                    io.smallrye.jwt.algorithm.SignatureAlgorithm.fromAlgorithm(algorithm.getName()));
         } catch (Exception exception) {
             throw new IllegalStateException(
                     "Unable to load private key from '" + location + "'", exception);
@@ -166,17 +161,12 @@ public final class ConfiguredAuthorizationServerKeySource implements Authorizati
 
     private static PublicKey readPublicKey(String location, SignatureAlgorithm algorithm) {
         try {
-            byte[] encoded = decodePem(read(location), "PUBLIC KEY");
-            return KeyFactory.getInstance(keyFactoryAlgorithm(algorithm))
-                    .generatePublic(new X509EncodedKeySpec(encoded));
+            return KeyUtils.decodePublicKey(read(location),
+                    io.smallrye.jwt.algorithm.SignatureAlgorithm.fromAlgorithm(algorithm.getName()));
         } catch (Exception exception) {
             throw new IllegalStateException(
                     "Unable to load public key from '" + location + "'", exception);
         }
-    }
-
-    private static String keyFactoryAlgorithm(SignatureAlgorithm algorithm) {
-        return algorithm.getName().startsWith("ES") ? "EC" : "RSA";
     }
 
     private static String read(String location) throws IOException {
@@ -193,18 +183,6 @@ public final class ConfiguredAuthorizationServerKeySource implements Authorizati
         }
         Path path = location.startsWith("file:") ? Path.of(URI.create(location)) : Path.of(location);
         return Files.readString(path, StandardCharsets.UTF_8);
-    }
-
-    private static byte[] decodePem(String pem, String type) {
-        String begin = "-----BEGIN " + type + "-----";
-        String end = "-----END " + type + "-----";
-        int beginIndex = pem.indexOf(begin);
-        int endIndex = pem.indexOf(end);
-        if (beginIndex < 0 || endIndex < 0 || endIndex <= beginIndex) {
-            throw new IllegalArgumentException("Expected PEM " + type);
-        }
-        String encoded = pem.substring(beginIndex + begin.length(), endIndex).replaceAll("\\s", "");
-        return Base64.getDecoder().decode(encoded);
     }
 
     private static boolean isSingleKeyConfigured(SigningConfig config) {

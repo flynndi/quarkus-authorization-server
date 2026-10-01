@@ -17,7 +17,6 @@ import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.Signature;
 import java.security.spec.MGF1ParameterSpec;
-import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.PSSParameterSpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.ArrayList;
@@ -50,6 +49,7 @@ import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.quarkus.test.QuarkusUnitTest;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
+import io.smallrye.jwt.util.KeyUtils;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -236,11 +236,7 @@ class OAuth2AuthorizationServerEndpointsTest {
                 .getContextClassLoader()
                 .getResourceAsStream("privateKey.pem")) {
             String pem = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-            String encoded = pem.replace("-----BEGIN PRIVATE KEY-----", "")
-                    .replace("-----END PRIVATE KEY-----", "")
-                    .replaceAll("\\s", "");
-            return KeyFactory.getInstance("RSA")
-                    .generatePrivate(new PKCS8EncodedKeySpec(Base64.getDecoder().decode(encoded)));
+            return KeyUtils.decodePrivateKey(pem);
         }
     }
 

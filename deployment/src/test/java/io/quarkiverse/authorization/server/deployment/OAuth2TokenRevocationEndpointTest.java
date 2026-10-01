@@ -5,10 +5,16 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.emptyString;
 import static org.hamcrest.Matchers.equalTo;
 
+import jakarta.inject.Inject;
+
 import org.jboss.shrinkwrap.api.asset.StringAsset;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import io.quarkiverse.authorization.server.authorization.OAuth2Authorization;
+import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationService;
+import io.quarkiverse.authorization.server.endpoint.OAuth2ParameterNames;
+import io.quarkiverse.authorization.server.token.OAuth2TokenType;
 import io.quarkus.elytron.security.common.BcryptUtil;
 import io.quarkus.test.QuarkusUnitTest;
 import io.restassured.http.ContentType;
@@ -35,6 +41,9 @@ class OAuth2TokenRevocationEndpointTest {
                     quarkus.authorization-server.clients.jwt-client.authorization-grant-types=client_credentials
                     quarkus.authorization-server.clients.jwt-client.scopes=message.read
                     """.formatted(CLIENT_SECRET_HASH, JWT_CLIENT_SECRET_HASH)), "application.properties"));
+
+    @Inject
+    OAuth2AuthorizationService authorizations;
 
     @Test
     void revokesOpaqueTokenAndRepeatedRequestRemainsSuccessful() {
@@ -81,6 +90,22 @@ class OAuth2TokenRevocationEndpointTest {
             revocationRequest("opaque-client", "client-secret", "unknown-token")
                     .post(REVOCATION_PATH).then().statusCode(200).body(emptyString());
         }
+    }
+
+    @Test
+    void consentStateReturnsEmptySuccessForEitherClientWithoutRevokingToken() {
+        String token = issueToken("opaque-client", "client-secret");
+        OAuth2Authorization authorization = this.authorizations.findByToken(token, OAuth2TokenType.ACCESS_TOKEN);
+        this.authorizations.save(OAuth2Authorization.from(authorization)
+                .attribute(OAuth2ParameterNames.STATE, "revocation-consent-state")
+                .build());
+
+        revocationRequest("opaque-client", "client-secret", "revocation-consent-state")
+                .post(REVOCATION_PATH).then().statusCode(200).body(emptyString());
+        revocationRequest("jwt-client", "jwt-secret", "revocation-consent-state")
+                .post(REVOCATION_PATH).then().statusCode(200).body(emptyString());
+        introspectionRequest(token).post("/oauth2/introspect").then().statusCode(200)
+                .body("active", equalTo(true));
     }
 
     @Test

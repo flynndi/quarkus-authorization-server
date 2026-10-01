@@ -13,6 +13,8 @@ import java.util.Map;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import io.quarkiverse.authorization.server.authorization.InMemoryOAuth2AuthorizationService;
 import io.quarkiverse.authorization.server.authorization.OAuth2Authorization;
@@ -20,6 +22,7 @@ import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationServ
 import io.quarkiverse.authorization.server.authorization.OAuth2TokenIntrospection;
 import io.quarkiverse.authorization.server.client.InMemoryRegisteredClientRepository;
 import io.quarkiverse.authorization.server.client.RegisteredClient;
+import io.quarkiverse.authorization.server.endpoint.OAuth2ParameterNames;
 import io.quarkiverse.authorization.server.model.AuthorizationGrantType;
 import io.quarkiverse.authorization.server.model.ClientAuthenticationMethod;
 import io.quarkiverse.authorization.server.model.OAuth2AuthenticationException;
@@ -95,6 +98,33 @@ class OAuth2TokenIntrospectionAuthenticationProviderTest {
         assertSame(request, result);
         assertFalse(result.isAuthenticated());
         assertEquals(Map.of("active", false), result.getTokenClaims().getClaims());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = { false, true })
+    void consentStateReturnsInactiveWithoutExposingAuthorizationClaims(boolean withAccessToken) {
+        OAuth2Authorization.Builder builder = OAuth2Authorization.withRegisteredClient(this.authorizedClient)
+                .principalName("resource-owner")
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .attribute(OAuth2ParameterNames.STATE, "consent-state");
+        if (withAccessToken) {
+            builder.accessToken(new OAuth2AccessToken(OAuth2AccessToken.TokenType.BEARER,
+                    "actual-access-token", ISSUED_AT, ISSUED_AT.plusSeconds(300)));
+        }
+        OAuth2Authorization authorization = builder.build();
+        InMemoryOAuth2AuthorizationService authorizations = new InMemoryOAuth2AuthorizationService(authorization);
+        assertSame(authorization, authorizations.findByToken("consent-state", null));
+        assertNull(authorization.getToken("consent-state"));
+        OAuth2TokenIntrospectionAuthenticationToken request = request("consent-state", null);
+
+        OAuth2TokenIntrospectionAuthenticationToken result = provider(authorizations).authenticate(request);
+
+        assertSame(request, result);
+        assertEquals(Map.of("active", false), result.getTokenClaims().getClaims());
+        assertSame(authorization, authorizations.findById(authorization.getId()));
+        if (withAccessToken) {
+            assertTrue(authorization.getAccessToken().isActive());
+        }
     }
 
     @Test

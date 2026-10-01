@@ -52,7 +52,11 @@ public final class OAuth2TokenRevocationAuthenticationProvider {
 
         OAuth2Authorization authorization = this.authorizationService.findByToken(
                 authentication.getToken(), null);
-        if (authorization == null) {
+        // A consent-state match is an unknown token, regardless of the authorization's client.
+        OAuth2Authorization.Token<OAuth2Token> token = authorization != null
+                ? authorization.getToken(authentication.getToken())
+                : null;
+        if (token == null) {
             return authentication;
         }
 
@@ -60,7 +64,6 @@ public final class OAuth2TokenRevocationAuthenticationProvider {
             throw new OAuth2AuthenticationException(OAuth2ErrorCodes.INVALID_CLIENT);
         }
 
-        OAuth2Authorization.Token<OAuth2Token> token = authorization.getToken(authentication.getToken());
         authorization = OAuth2Authorization.from(authorization).invalidate(token.getToken()).build();
         this.authorizationService.save(authorization);
 

@@ -12,6 +12,7 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import io.quarkiverse.authorization.server.authorization.InMemoryOAuth2AuthorizationService;
@@ -19,6 +20,7 @@ import io.quarkiverse.authorization.server.authorization.OAuth2Authorization;
 import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationCode;
 import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationService;
 import io.quarkiverse.authorization.server.client.RegisteredClient;
+import io.quarkiverse.authorization.server.endpoint.OAuth2ParameterNames;
 import io.quarkiverse.authorization.server.model.AuthorizationGrantType;
 import io.quarkiverse.authorization.server.model.OAuth2AuthenticationException;
 import io.quarkiverse.authorization.server.model.OAuth2ErrorCodes;
@@ -58,6 +60,33 @@ class OAuth2TokenRevocationAuthenticationProviderTest {
         assertEquals(0, authorizations.saveCount);
         assertEquals("unknown", authorizations.requestedToken);
         assertNull(authorizations.requestedTokenType);
+    }
+
+    @ParameterizedTest
+    @CsvSource({ "false, false", "false, true", "true, false", "true, true" })
+    void consentStateIsIgnoredWithoutRevokingTokens(boolean otherClient, boolean withTokens) {
+        RegisteredClient owner = otherClient ? this.otherClient : this.registeredClient;
+        OAuth2Authorization.Builder builder = withTokens
+                ? OAuth2Authorization.from(authorization(owner, "consent"))
+                : OAuth2Authorization.withRegisteredClient(owner)
+                        .principalName("resource-owner")
+                        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE);
+        OAuth2Authorization authorization = builder.attribute(OAuth2ParameterNames.STATE, "consent-state").build();
+        RecordingAuthorizationService authorizations = new RecordingAuthorizationService(authorization);
+        assertSame(authorization, authorizations.findByToken("consent-state", null));
+        assertNull(authorization.getToken("consent-state"));
+        OAuth2TokenRevocationAuthenticationToken request = request("consent-state", "access_token");
+
+        OAuth2TokenRevocationAuthenticationToken result = provider(authorizations).authenticate(request);
+
+        assertSame(request, result);
+        assertEquals(0, authorizations.saveCount);
+        assertSame(authorization, authorizations.findById(authorization.getId()));
+        if (withTokens) {
+            assertTrue(authorization.getAccessToken().isActive());
+            assertTrue(authorization.getRefreshToken().isActive());
+            assertTrue(authorization.getAuthorizationCode().isActive());
+        }
     }
 
     @Test

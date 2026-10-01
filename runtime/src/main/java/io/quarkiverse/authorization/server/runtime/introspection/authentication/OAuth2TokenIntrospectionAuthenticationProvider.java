@@ -62,12 +62,15 @@ public final class OAuth2TokenIntrospectionAuthenticationProvider {
 
         OAuth2Authorization authorization = this.authorizationService.findByToken(
                 authentication.getToken(), null);
-        if (authorization == null) {
+        // The repository lookup can match consent state without matching a token.
+        OAuth2Authorization.Token<OAuth2Token> authorizedToken = authorization != null
+                ? authorization.getToken(authentication.getToken())
+                : null;
+        if (authorizedToken == null) {
             // The unchanged request represents an inactive token with only active=false.
             return authentication;
         }
 
-        OAuth2Authorization.Token<OAuth2Token> authorizedToken = authorization.getToken(authentication.getToken());
         if (!authorizedToken.isActive()) {
             return inactive(authentication.getToken(), clientPrincipal);
         }

@@ -22,6 +22,8 @@ import jakarta.inject.Singleton;
 import org.jboss.shrinkwrap.api.asset.StringAsset;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import io.quarkiverse.authorization.server.authorization.OAuth2Authorization;
 import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationService;
@@ -289,6 +291,39 @@ class OAuth2TokenExchangeGrantTest {
                 .then().statusCode(400).body("error", equalTo("invalid_request"));
     }
 
+    @ParameterizedTest
+    @CsvSource({
+            "https://issuer.example, customized-actor, 200",
+            "https://wrong.example, customized-actor, 400",
+            "https://issuer.example, actor, 400"
+    })
+    void validatesMayActAgainstIssuedActorClaims(String issuer, String subject, int status) {
+        String actorToken = given().auth().preemptive().basic("actor", "client-secret")
+                .contentType(ContentType.URLENC).formParam("grant_type", "client_credentials")
+                .post("/oauth2/token").then().statusCode(200).extract().path("access_token");
+        OAuth2Authorization actor = this.authorizations.findByToken(actorToken, OAuth2TokenType.ACCESS_TOKEN);
+        assertEquals("actor", actor.getPrincipalName());
+        assertEquals("customized-actor", actor.getAccessToken().getClaims().get("sub"));
+        assertEquals("https://issuer.example", actor.getAccessToken().getClaims().get("iss"));
+        String subjectToken = "subject-" + UUID.randomUUID();
+        this.saveSubject("source-jwt", subjectToken,
+                QuarkusSecurityIdentity.builder().setPrincipal(new QuarkusPrincipal("resource-owner")).build(),
+                Map.of("sub", "resource-owner", "may_act", Map.of("iss", issuer, "sub", subject)));
+
+        Response response = OAuth2TokenExchangeGrantTest.exchangeRequest("exchange-jwt", subjectToken, ACCESS_TOKEN_TYPE)
+                .formParam("actor_token", actorToken).formParam("actor_token_type", JWT_TOKEN_TYPE)
+                .post("/oauth2/token").then().statusCode(status).extract().response();
+
+        if (status == 200) {
+            var exchanged = this.authorizations.findByToken(response.path("access_token"), OAuth2TokenType.ACCESS_TOKEN);
+            assertEquals(Map.of("iss", "https://issuer.example", "sub", "customized-actor"),
+                    exchanged.getAccessToken().getClaims().get("act"));
+        } else {
+            response.then().body("error", equalTo("invalid_grant"));
+        }
+        assertTrue(actor.getAccessToken().isActive());
+    }
+
     private OAuth2Authorization saveSubject(String clientId, String tokenValue, SecurityIdentity identity,
             Map<String, Object> claims) {
         RegisteredClient client = this.clients.findByClientId(clientId);
@@ -352,6 +387,10 @@ class OAuth2TokenExchangeGrantTest {
     public static class TestJwtCustomizer implements OAuth2TokenCustomizer<JwtEncodingContext> {
         @Override
         public void customize(JwtEncodingContext context) {
+            if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())
+                    && "actor".equals(context.getRegisteredClient().getClientId())) {
+                context.getClaims().subject("customized-actor");
+            }
             if (AuthorizationGrantType.TOKEN_EXCHANGE.equals(context.getAuthorizationGrantType())) {
                 context.getClaims().claims(claims -> claims.put("application_after_exchange",
                         claims.containsKey("aud") && claims.containsKey("act")));

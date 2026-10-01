@@ -392,6 +392,8 @@ class AuthorizationEndpointPolicyTest {
             AuthorizationConsentCustomizer {
         @Inject
         PolicyRequestProbe request;
+        @Inject
+        RoutingContext http;
         final AtomicInteger codeGenerations = new AtomicInteger();
         final AtomicInteger validatorInvocations = new AtomicInteger();
         final AtomicInteger interceptions = new AtomicInteger();
@@ -400,6 +402,8 @@ class AuthorizationEndpointPolicyTest {
         public void validate(AuthorizationRequestContext context) {
             this.validatorInvocations.incrementAndGet();
             this.request.visit("code-validator");
+            assertEquals("/oauth2/authorize", this.http.request().path());
+            assertEquals(context.getRequest().getState(), this.http.request().getParam("state"));
             if ("deny".equals(context.getRequest().getState())) {
                 throw new OAuth2AuthenticationException(OAuth2ErrorCodes.INVALID_REQUEST);
             }
@@ -425,6 +429,8 @@ class AuthorizationEndpointPolicyTest {
         @Override
         public void customize(AuthorizationConsentContext context) {
             this.request.visit("code-consent");
+            assertEquals("/oauth2/authorize", this.http.request().path());
+            assertEquals(context.getSubmission().getState(), this.http.request().formAttributes().get("state"));
             context.getAuthorizationConsent().authority("code:policy");
             // Test-only application policy, exercising both decisions through the actual CDI hook.
             String decision = (String) context.getSubmission().getAdditionalParameters().get("test_decision");

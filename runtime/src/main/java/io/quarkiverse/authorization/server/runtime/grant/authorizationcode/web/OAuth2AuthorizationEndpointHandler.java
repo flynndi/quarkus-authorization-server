@@ -24,10 +24,10 @@ import io.quarkiverse.authorization.server.runtime.grant.authorizationcode.autho
 import io.quarkiverse.authorization.server.runtime.grant.authorizationcode.authorization.AuthorizationRequestProcessor;
 import io.quarkiverse.authorization.server.runtime.http.converter.OAuth2ErrorHttpMessageConverter;
 import io.quarkiverse.authorization.server.runtime.util.Arguments;
+import io.quarkiverse.authorization.server.runtime.web.ProtocolExecutor;
 import io.quarkiverse.authorization.server.runtime.web.authentication.OAuth2ErrorAuthenticationFailureHandler;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
-import io.quarkus.vertx.VertxContextSupport;
 import io.quarkus.vertx.http.runtime.security.HttpAuthenticator;
 import io.quarkus.vertx.http.runtime.security.QuarkusHttpUser;
 import io.vertx.core.Handler;
@@ -48,13 +48,9 @@ public final class OAuth2AuthorizationEndpointHandler implements Handler<Routing
     private final OAuth2AuthorizationConsentPage authorizationConsentPage;
     private final OAuth2ErrorAuthenticationFailureHandler authenticationFailureHandler;
     private final HttpAuthenticator httpAuthenticator;
+    private final ProtocolExecutor executor;
 
-    private OidcSessionManager sessionManager;
-
-    @Inject
-    void configureSessionManager(Instance<OidcSessionManager> sessionManagers) {
-        this.sessionManager = sessionManagers.isUnsatisfied() ? null : sessionManagers.get();
-    }
+    private final OidcSessionManager sessionManager;
 
     @Inject
     public OAuth2AuthorizationEndpointHandler(
@@ -62,12 +58,17 @@ public final class OAuth2AuthorizationEndpointHandler implements Handler<Routing
             AuthorizationConsentProcessor authorizationConsentProcessor,
             OAuth2AuthorizationConsentPage authorizationConsentPage,
             HttpAuthenticator httpAuthenticator,
-            OAuth2ErrorHttpMessageConverter errorResponseConverter) {
+            OAuth2ErrorHttpMessageConverter errorResponseConverter,
+            ProtocolExecutor executor,
+            Instance<OidcSessionManager> sessionManagers) {
         this.authorizationRequestProcessor = authorizationRequestProcessor;
         this.authorizationConsentProcessor = authorizationConsentProcessor;
         this.authorizationConsentPage = authorizationConsentPage;
         this.httpAuthenticator = httpAuthenticator;
         this.authenticationFailureHandler = new OAuth2ErrorAuthenticationFailureHandler(errorResponseConverter);
+        this.executor = executor;
+        // OAuth authorization also works without OIDC or an application session manager.
+        this.sessionManager = sessionManagers.isUnsatisfied() ? null : sessionManagers.get();
     }
 
     @Override
@@ -107,11 +108,10 @@ public final class OAuth2AuthorizationEndpointHandler implements Handler<Routing
             }
             AuthorizationRequest authentication = this.authorizationCodeRequestAuthenticationConverter.parse(context);
             if (authentication != null) {
-                VertxContextSupport.executeBlocking(
+                this.executor.execute(context,
                         () -> this.authorizationRequestProcessor.authorize(authentication))
                         .subscribe()
-                        .with(
-                                authenticationResult -> this.handleAuthorizationResult(context, authenticationResult),
+                        .with(authenticationResult -> this.handleAuthorizationResult(context, authenticationResult),
                                 failure -> this.handleAuthenticationFailure(context, failure));
                 return;
             }
@@ -126,11 +126,10 @@ public final class OAuth2AuthorizationEndpointHandler implements Handler<Routing
                         null);
             }
 
-            VertxContextSupport.executeBlocking(
+            this.executor.execute(context,
                     () -> this.authorizationConsentProcessor.consent(consentAuthentication))
                     .subscribe()
-                    .with(
-                            authenticationResult -> this.handleAuthorizationResult(context, authenticationResult),
+                    .with(authenticationResult -> this.handleAuthorizationResult(context, authenticationResult),
                             failure -> this.handleAuthenticationFailure(context, failure));
         } catch (AuthorizationRequestException exception) {
             this.sendErrorResponse(context, exception);

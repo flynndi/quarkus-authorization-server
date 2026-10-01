@@ -21,23 +21,27 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 final class UnmodifiableMapDeserializer extends JsonDeserializer<Map<?, ?>> {
 
     @Override
     public Map<?, ?> deserialize(JsonParser parser, DeserializationContext context) throws IOException {
-        ObjectMapper objectMapper = (ObjectMapper) parser.getCodec();
-        JsonNode mapNode = objectMapper.readTree(parser);
         Map<String, Object> result = new LinkedHashMap<>();
-        if (mapNode != null && mapNode.isObject()) {
-            for (Map.Entry<String, JsonNode> entry : mapNode.properties()) {
-                result.put(entry.getKey(),
-                        objectMapper.readValue(entry.getValue().traverse(objectMapper), Object.class));
-            }
+        if (parser.isExpectedStartObjectToken()) {
+            parser.nextToken();
+        }
+        // Read values directly: an intermediate JsonNode converts decimal timestamps to doubles.
+        while (parser.hasToken(JsonToken.FIELD_NAME)) {
+            String name = parser.currentName();
+            parser.nextToken();
+            result.put(name, context.readValue(parser, Object.class));
+            parser.nextToken();
+        }
+        if (!parser.hasToken(JsonToken.END_OBJECT)) {
+            return (Map<?, ?>) context.handleUnexpectedToken(Map.class, parser);
         }
         return Collections.unmodifiableMap(result);
     }

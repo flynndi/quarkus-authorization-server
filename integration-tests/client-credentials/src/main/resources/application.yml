@@ -1,7 +1,23 @@
 ---
+test-client:
+  jwks-origin: "https://localhost:${quarkus.http.ssl-port:8443}"
 quarkus:
   http:
     host: 127.0.0.1
+    tls-configuration-name: jwks-server
+    insecure-requests: enabled
+  # Public test credentials, copied from deployment/src/test/resources/mtls.
+  # Trust only the test CA; outbound JWKS still verifies certificates and hostnames.
+  tls:
+    jwks-server:
+      key-store:
+        p12:
+          path: jwks/server.p12
+          password: password
+    jwks-client:
+      trust-store:
+        pem:
+          certs: jwks/ca.pem
   datasource:
     db-kind: h2
     username: sa
@@ -12,9 +28,13 @@ quarkus:
       enabled: false
   native:
     resources:
-      includes: test-private-key.pem,test-public-key.pem
+      includes: test-private-key.pem,test-public-key.pem,jwks/*
   authorization-server:
     issuer: "${AUTHORIZATION_SERVER_ISSUER:http://localhost:${quarkus.http.port:8080}}"
+    client-jwks:
+      tls-configuration-name: jwks-client
+      allowed-private-origins:
+        - "${test-client.jwks-origin}"
     oidc:
       enabled: true
     signing:
@@ -80,6 +100,8 @@ quarkus:
         allow-jwt-introspection: false
         allow-opaque-token-introspection: true
 "%test":
+  test-client:
+    jwks-origin: "https://localhost:${quarkus.http.test-ssl-port:8444}"
   quarkus:
     authorization-server:
       issuer: http://localhost:${quarkus.http.test-port:8081}

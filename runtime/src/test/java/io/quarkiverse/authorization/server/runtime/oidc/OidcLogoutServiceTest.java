@@ -123,7 +123,7 @@ class OidcLogoutServiceTest {
     @Test
     void persistsSnapshotAndClientPostLogoutUrisAcrossNewRepositoryInstances() {
         SessionInformation expected = new SessionInformation(
-                "alice", "public-session-id", Instant.now().minusSeconds(90));
+                "alice", "public-session-id", Instant.parse("2026-09-01T01:00:00.123456789Z"));
         var authorization = this.service.findById("authorization");
         this.service.save(
                 OAuth2Authorization.from(authorization)

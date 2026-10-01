@@ -299,7 +299,13 @@ class JdbcOAuth2AuthorizationServiceTest {
         OAuth2Authorization restored = this.authorizationService.findByToken(
                 refreshToken.getTokenValue(), OAuth2TokenType.REFRESH_TOKEN);
         assertNotNull(restored);
-        assertEquals(refreshToken, restored.getRefreshToken().getToken());
+        OAuth2RefreshToken storedToken = restored.getRefreshToken().getToken();
+        assertEquals(refreshToken.getTokenValue(), storedToken.getTokenValue());
+        // H2's default TIMESTAMP rounds to microseconds; the system clock may return nanoseconds.
+        assertTrue(Duration.between(refreshToken.getIssuedAt(), storedToken.getIssuedAt()).abs()
+                .compareTo(Duration.ofNanos(500)) <= 0);
+        assertTrue(Duration.between(refreshToken.getExpiresAt(), storedToken.getExpiresAt()).abs()
+                .compareTo(Duration.ofNanos(500)) <= 0);
         assertTrue(restored.getRefreshToken().isActive());
     }
 
@@ -559,7 +565,7 @@ class JdbcOAuth2AuthorizationServiceTest {
                 "access-token",
                 "previous-refresh-token");
         this.authorizationService.save(authorization);
-        Instant issuedAt = Instant.now();
+        Instant issuedAt = Instant.parse("2026-09-01T01:00:00.123456Z");
         OAuth2RefreshToken rotatedRefreshToken = new OAuth2RefreshToken(
                 "rotated-refresh-token", issuedAt, issuedAt.plusSeconds(3600));
 

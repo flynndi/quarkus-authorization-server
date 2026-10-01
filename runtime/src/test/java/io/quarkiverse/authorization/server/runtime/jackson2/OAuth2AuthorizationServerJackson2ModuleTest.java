@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
@@ -25,6 +26,7 @@ import io.quarkiverse.authorization.server.endpoint.OAuth2AuthorizationRequest;
 import io.quarkiverse.authorization.server.jose.jws.SignatureAlgorithm;
 import io.quarkiverse.authorization.server.model.AuthorizationGrantType;
 import io.quarkiverse.authorization.server.model.ClientAuthenticationMethod;
+import io.quarkiverse.authorization.server.oidc.session.SessionInformation;
 import io.quarkiverse.authorization.server.settings.OAuth2TokenFormat;
 import io.quarkiverse.authorization.server.token.OAuth2TokenType;
 
@@ -68,7 +70,14 @@ class OAuth2AuthorizationServerJackson2ModuleTest {
                 .registerModule(new OAuth2AuthorizationServerJackson2Module());
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("duration", Duration.ofMinutes(5));
-        values.put("instant", Instant.parse("2026-08-31T01:00:00Z"));
+        Instant instant = Instant.parse("2026-08-31T01:00:00.123456789Z");
+        values.put("instant", instant);
+        values.put("session", new SessionInformation("alice", "session", instant));
+        values.put("instant_list", Collections.unmodifiableList(List.of(instant)));
+        values.put("instant_set", Collections.unmodifiableSet(new HashSet<>(List.of(instant))));
+        values.put("decimal", new BigDecimal("1.1234567890123456789"));
+        values.put("double", 1.25d);
+        values.put("null", null);
         values.put("grant_type", AuthorizationGrantType.PASSWORD);
         values.put("client_authentication_method", ClientAuthenticationMethod.CLIENT_SECRET_BASIC);
         values.put("signature_algorithm", SignatureAlgorithm.PS256);

@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  jvm:
+    name: JVM (Java ${{ matrix.java }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        java: ['21', '25']
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+      # Unlike build, check verifies formatting without rewriting committed sources.
+      # Keep Quarkus test applications sequential because they share HTTP test ports.
+      - name: Check formatting and run JVM tests
+        run: >-
+          ./gradlew check
+          "-Dorg.gradle.jvmargs=-Xmx2g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8"
+          --no-daemon --no-parallel --max-workers=2 --console=plain --stacktrace
+      - name: Upload JVM reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: jvm-java-${{ matrix.java }}-reports
+          path: |
+            **/build/reports/
+            **/build/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  native:
+    name: Native (${{ matrix.module }}, ${{ matrix.profile }})
+    needs: jvm
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - module: authorization-code
+            profile: prod
+          - module: client-credentials
+            profile: prod
+          - module: device-authorization
+            profile: prod
+          - module: password-grant
+            profile: prod
+          - module: token-exchange
+            profile: prod
+          - module: authorization-code
+            profile: multiple-issuers
+          - module: authorization-code
+            profile: reference-registration
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: graalvm/setup-graalvm@0426e2e191540e8514dff98dc52a5f5146a2a276 # v1
+        with:
+          distribution: graalvm
+          java-version: '21'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+      - name: Build native executable and run integration tests
+        env:
+          TEST_MODULE: ${{ matrix.module }}
+          TEST_PROFILE: ${{ matrix.profile }}
+        run: >-
+          ./gradlew ":integration-tests:${TEST_MODULE}:quarkusIntTest"
+          -Dquarkus.native.enabled=true
+          -Dquarkus.package.jar.enabled=false
+          -Dquarkus.native.native-image-xmx=6g
+          "-Dquarkus.profile=${TEST_PROFILE}"
+          "-Dquarkus.test.integration-test-profile=${TEST_PROFILE}"
+          "-Dorg.gradle.jvmargs=-Xmx2g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8"
+          --no-daemon --no-parallel --max-workers=2 --console=plain --stacktrace
+      - name: Upload Native reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: native-${{ matrix.module }}-${{ matrix.profile }}-reports
+          path: |
+            **/build/reports/
+            **/build/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  required:
+    name: CI required
+    if: ${{ always() }}
+    needs: [jvm, native]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      # A skipped or cancelled matrix must never satisfy branch protection.
+      - name: Require every JVM and Native job to succeed
+        env:
+          JVM_RESULT: ${{ needs.jvm.result }}
+          NATIVE_RESULT: ${{ needs.native.result }}
+        run: |
+          printf 'JVM: %s\nNative: %s\n' "$JVM_RESULT" "$NATIVE_RESULT"
+          test "$JVM_RESULT" = success
+          test "$NATIVE_RESULT" = success

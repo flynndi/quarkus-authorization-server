@@ -9,7 +9,6 @@ base {
 dependencies {
     implementation(platform(libs.quarkus.bom))
     implementation(project(":runtime"))
-    implementation(libs.quarkus.agroal.deployment)
     implementation(libs.quarkus.core.deployment)
     implementation(libs.quarkus.devui.deployment.spi)
     implementation(libs.quarkus.arc.deployment)

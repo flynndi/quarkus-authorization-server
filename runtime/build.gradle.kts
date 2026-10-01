@@ -13,7 +13,8 @@ quarkusExtension {
 
 dependencies {
     implementation(platform(libs.quarkus.bom))
-    implementation(libs.quarkus.agroal)
+    // JDBC works with standard DataSource; Agroal transaction detection is optional.
+    compileOnly(libs.agroal.api)
     implementation(libs.jose4j)
     implementation(libs.quarkus.arc)
     implementation(libs.quarkus.jackson)

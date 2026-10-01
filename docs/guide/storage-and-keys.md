@@ -4,7 +4,9 @@ The default stores are in-memory and unconfigured signing keys are temporary. Th
 
 ## Install JDBC stores through CDI
 
-Add the Quarkus JDBC driver for your database, such as `io.quarkus:quarkus-jdbc-postgresql`. Configure its datasource:
+The same `quarkus-authorization-server` extension includes the in-memory stores, JDBC implementations, serialization and SQL resources, without bringing in Agroal or JTA. In-memory stores need no database components, and applications choose the dependencies for their custom stores. JDBC implementations accept a standard `javax.sql.DataSource`; wire the repository beans as shown below.
+
+For a Quarkus-managed datasource, explicitly add `io.quarkus:quarkus-agroal` and the Quarkus JDBC driver for your database, such as `io.quarkus:quarkus-jdbc-postgresql`. Configure the datasource:
 
 ```properties
 quarkus.datasource.db-kind=postgresql
@@ -65,6 +67,8 @@ Source: [`AuthorizationServerPersistence`](https://github.com/flynndi/quarkus-au
 ## Understand transaction boundaries
 
 JDBC repositories are synchronous. The extension invokes protocol work on a worker; custom callers must also use a blocking-capable context.
+
+Applications explicitly add `quarkus-agroal` to use a Quarkus-managed connection pool and transaction integration. Repositories check Agroal transaction participation only when its API is present; a plain JDBC `DataSource` does not require Agroal.
 
 An Agroal connection already enlisted in an external JTA transaction follows that transaction. Otherwise each repository write uses its own local transaction. The extension does not automatically wrap an entire grant in a transaction or promise atomic single consumption under concurrent requests. Application-owned transaction boundaries must cover the actual synchronous JDBC work, not only the creation of a reactive operation.
 

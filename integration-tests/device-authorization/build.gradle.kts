@@ -8,6 +8,7 @@ dependencies {
     implementation(project(":integration-tests:common"))
     implementation(libs.quarkus.config.yaml)
     implementation(libs.quarkus.jdbc.h2)
+    implementation(libs.quarkus.agroal)
     implementation(libs.quarkus.oidc)
     implementation(libs.quarkus.rest.jackson)
     implementation(libs.quarkus.rest.qute)

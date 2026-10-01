@@ -75,6 +75,11 @@ class OidcClientRegistrationServiceTest {
                         }
 
                         @Override
+                        public ClientJwksConfig clientJwks() {
+                            throw new UnsupportedOperationException("Signing fixture does not use client JWKS");
+                        }
+
+                        @Override
                         public DPoPConfig dpop() {
                             throw new UnsupportedOperationException("Signing fixture does not use DPoP");
                         }
@@ -561,7 +566,7 @@ class OidcClientRegistrationServiceTest {
                         }, settings -> {
                         })::convert,
                 new RegisteredClientOidcClientRegistrationConverter()::map,
-                encoder);
+                encoder, new io.quarkiverse.authorization.server.runtime.client.authentication.ClientJwkSetUrlPolicy(Set.of()));
         return result;
     }
 

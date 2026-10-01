@@ -19,6 +19,7 @@ import io.quarkiverse.authorization.server.context.DefaultAuthorizationServerCon
 import io.quarkiverse.authorization.server.model.AuthorizationGrantType;
 import io.quarkiverse.authorization.server.model.ClientAuthenticationMethod;
 import io.quarkiverse.authorization.server.model.OAuth2AuthenticationException;
+import io.quarkiverse.authorization.server.model.OAuth2Error;
 import io.quarkiverse.authorization.server.model.OAuth2ErrorCodes;
 import io.quarkiverse.authorization.server.oidc.OidcClientMetadataClaimNames;
 import io.quarkiverse.authorization.server.oidc.OidcClientRegistration;
@@ -29,6 +30,7 @@ import io.quarkiverse.authorization.server.oidc.registration.OidcClientRegistrat
 import io.quarkiverse.authorization.server.oidc.registration.OidcClientRegistrationRequestValidator;
 import io.quarkiverse.authorization.server.oidc.registration.RegisteredClientMapper;
 import io.quarkiverse.authorization.server.runtime.authentication.OAuth2AuthenticationProviderUtils;
+import io.quarkiverse.authorization.server.runtime.client.authentication.ClientJwkSetUrlPolicy;
 import io.quarkiverse.authorization.server.runtime.client.registration.RegistrationAccessTokens;
 import io.quarkiverse.authorization.server.runtime.token.AuthorizationServerKeyManager;
 import io.quarkiverse.authorization.server.token.DefaultOAuth2TokenContext;
@@ -56,6 +58,7 @@ public final class OidcClientRegistrationService {
     private final ClientRegistrationMapper clientRegistrationConverter;
     private final ClientSecretEncoder passwordEncoder;
     private final OidcClientRegistrationRequestValidator requestValidator;
+    private final ClientJwkSetUrlPolicy jwksPolicy;
 
     @Inject
     public OidcClientRegistrationService(
@@ -67,7 +70,7 @@ public final class OidcClientRegistrationService {
             OidcClientRegistrationRequestValidator requestValidator,
             RegisteredClientMapper registeredClientConverter,
             ClientRegistrationMapper clientRegistrationConverter,
-            ClientSecretEncoder passwordEncoder) {
+            ClientSecretEncoder passwordEncoder, ClientJwkSetUrlPolicy jwksPolicy) {
 
         this.registeredClientRepository = Objects.requireNonNull(repository);
         this.authorizationService = Objects.requireNonNull(authorizationService);
@@ -80,6 +83,7 @@ public final class OidcClientRegistrationService {
         this.clientRegistrationConverter = Objects.requireNonNull(
                 clientRegistrationConverter, "clientRegistrationMapper cannot be null");
         this.passwordEncoder = Objects.requireNonNull(passwordEncoder, "secretEncoder cannot be null");
+        this.jwksPolicy = Objects.requireNonNull(jwksPolicy);
     }
 
     /** Executes synchronously. The endpoint supplies the worker and CDI request context. */
@@ -91,6 +95,14 @@ public final class OidcClientRegistrationService {
                 DEFAULT_CLIENT_REGISTRATION_AUTHORIZED_SCOPE);
         new OidcClientRegistrationMetadataValidator(this.keyManager.getSigningAlgorithms())
                 .validateSupportedMetadata(request.getClientRegistration());
+        if (request.getClientRegistration().getJwkSetUrl() != null) {
+            try {
+                this.jwksPolicy.validate(request.getClientRegistration().getJwkSetUrl().toString());
+            } catch (IllegalArgumentException exception) {
+                throw new OAuth2AuthenticationException(new OAuth2Error("invalid_client_metadata",
+                        "Invalid Client Registration: jwks_uri", null));
+            }
+        }
         this.requestValidator.validate(new OidcClientRegistrationContext(request));
         RegisteredClient client = Objects.requireNonNull(
                 this.registeredClientConverter.map(request.getClientRegistration()));

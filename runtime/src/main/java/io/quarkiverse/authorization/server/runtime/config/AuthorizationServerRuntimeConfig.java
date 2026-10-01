@@ -28,7 +28,19 @@ public interface AuthorizationServerRuntimeConfig {
 
     DPoPConfig dpop();
 
+    ClientJwksConfig clientJwks();
+
     Map<String, RegisteredClientConfig> clients();
+
+    /** Outbound transport for registered client JWKS, independent of the server's own signing keys. */
+    @ConfigGroup
+    interface ClientJwksConfig {
+        /** Exact HTTPS origins allowed to resolve to non-public addresses. No wildcard or HTTP exceptions. */
+        Optional<Set<String>> allowedPrivateOrigins();
+
+        /** Named Quarkus TLS configuration for outbound JWKS connections; system trust is used when absent. */
+        Optional<String> tlsConfigurationName();
+    }
 
     /** DPoP proof validation and default replay-store limits. */
     @ConfigGroup

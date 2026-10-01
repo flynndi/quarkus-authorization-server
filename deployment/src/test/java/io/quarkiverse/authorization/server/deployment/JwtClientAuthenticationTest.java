@@ -27,29 +27,35 @@ class JwtClientAuthenticationTest {
     static final QuarkusUnitTest unitTest = new QuarkusUnitTest().withApplicationRoot(jar -> jar
             .addClass(ClientAssertionTestSupport.class)
             .addAsResource("privateKey.pem").addAsResource("publicKey.pem")
+            .addAsResource("mtls/server.p12").addAsResource("mtls/ca.pem")
             .addAsResource(new StringAsset(
                     """
-                            quarkus.http.root-path=/api
-                            quarkus.authorization-server.issuer=https://issuer.example/api
-                            quarkus.authorization-server.token-endpoint=/assertion/token
-                            quarkus.authorization-server.oidc.enabled=true
-                            quarkus.authorization-server.pushed-authorization-requests-enabled=true
-                            quarkus.authorization-server.signing.key-id=assertion-test-key
-                            quarkus.authorization-server.signing.private-key-location=classpath:privateKey.pem
-                            quarkus.authorization-server.signing.public-key-location=classpath:publicKey.pem
-                            quarkus.authorization-server.clients.jwt-private.client-authentication-methods=private_key_jwt
-                            quarkus.authorization-server.clients.jwt-private.jwk-set-url=http://localhost:8081/api/oauth2/jwks
-                            quarkus.authorization-server.clients.jwt-private.token-endpoint-authentication-signing-algorithm=RS256
-                            quarkus.authorization-server.clients.jwt-private.authorization-grant-types=client_credentials,urn:ietf:params:oauth:grant-type:device_code,authorization_code
-                            quarkus.authorization-server.clients.jwt-private.redirect-uris=https://client.example/callback
-                            quarkus.authorization-server.clients.jwt-private.scopes=message.read
-                            quarkus.authorization-server.clients.jwt-secret.client-authentication-methods=client_secret_jwt
-                            quarkus.authorization-server.clients.jwt-secret.client-secret=%s
-                            quarkus.authorization-server.clients.jwt-secret.token-endpoint-authentication-signing-algorithm=HS256
-                            quarkus.authorization-server.clients.jwt-secret.authorization-grant-types=client_credentials,urn:ietf:params:oauth:grant-type:device_code,authorization_code
-                            quarkus.authorization-server.clients.jwt-secret.redirect-uris=https://client.example/callback
-                            quarkus.authorization-server.clients.jwt-secret.scopes=message.read
-                            """
+                                quarkus.http.root-path=/api
+                            quarkus.http.ssl.certificate.key-store-file=mtls/server.p12
+                            quarkus.http.ssl.certificate.key-store-password=password
+                            quarkus.tls.jwks.trust-store.pem.certs=mtls/ca.pem
+                            quarkus.authorization-server.client-jwks.tls-configuration-name=jwks
+                            quarkus.authorization-server.client-jwks.allowed-private-origins=https://localhost:8444
+                                quarkus.authorization-server.issuer=https://issuer.example/api
+                                quarkus.authorization-server.token-endpoint=/assertion/token
+                                quarkus.authorization-server.oidc.enabled=true
+                                quarkus.authorization-server.pushed-authorization-requests-enabled=true
+                                quarkus.authorization-server.signing.key-id=assertion-test-key
+                                quarkus.authorization-server.signing.private-key-location=classpath:privateKey.pem
+                                quarkus.authorization-server.signing.public-key-location=classpath:publicKey.pem
+                                quarkus.authorization-server.clients.jwt-private.client-authentication-methods=private_key_jwt
+                                quarkus.authorization-server.clients.jwt-private.jwk-set-url=https://localhost:8444/api/oauth2/jwks
+                                quarkus.authorization-server.clients.jwt-private.token-endpoint-authentication-signing-algorithm=RS256
+                                quarkus.authorization-server.clients.jwt-private.authorization-grant-types=client_credentials,urn:ietf:params:oauth:grant-type:device_code,authorization_code
+                                quarkus.authorization-server.clients.jwt-private.redirect-uris=https://client.example/callback
+                                quarkus.authorization-server.clients.jwt-private.scopes=message.read
+                                quarkus.authorization-server.clients.jwt-secret.client-authentication-methods=client_secret_jwt
+                                quarkus.authorization-server.clients.jwt-secret.client-secret=%s
+                                quarkus.authorization-server.clients.jwt-secret.token-endpoint-authentication-signing-algorithm=HS256
+                                quarkus.authorization-server.clients.jwt-secret.authorization-grant-types=client_credentials,urn:ietf:params:oauth:grant-type:device_code,authorization_code
+                                quarkus.authorization-server.clients.jwt-secret.redirect-uris=https://client.example/callback
+                                quarkus.authorization-server.clients.jwt-secret.scopes=message.read
+                                """
                             .formatted(SECRET)),
                     "application.properties"));
 

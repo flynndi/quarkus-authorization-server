@@ -111,6 +111,17 @@ Discovery paths are fixed: OAuth metadata uses `/.well-known/oauth-authorization
 
 During augmentation, enabled extension protocol endpoints and fixed discovery routes are checked for overlapping effective paths and HTTP methods. Errors identify both endpoints, configuration properties, paths and conflicting methods. Resolution uses Quarkus HTTP root handling and includes issuer prefixes; disabled optional endpoints do not reserve paths. GET-only JWKS and POST-only token endpoints can share a path. PAR claims all methods to return its own 405 response, so it cannot share a path with a GET endpoint. This diagnostic covers extension protocol routes, not application routes or runtime Form page locations. Implementation: [EndpointValidationProcessor][endpoint-validation].
 
+## Client JWKS downloads {#client-jwks}
+
+Phase: `RUN_TIME`. Prefix: `quarkus.authorization-server.client-jwks`.
+
+| Property | Type / default | Purpose |
+| --- | --- | --- |
+| `allowed-private-origins` | `Set<String>` · empty | Exact HTTPS origins that may resolve to non-public addresses. Public destinations are allowed by default; local, private and special-purpose destinations are rejected. |
+| `tls-configuration-name` | `String` · unset | Named Quarkus TLS configuration for client JWKS downloads. Unset uses system trust. Selecting `trust-all=true` fails startup; certificate and hostname verification remain required. |
+
+See [outbound client JWKS](./clients.md#client-jwks) for destination checks and private-CA configuration. This policy controls outbound key retrieval, not whether the authorization server itself listens on HTTP or HTTPS.
+
 ## Issuer {#issuer}
 
 Phase: `RUN_TIME`. Mapping: [AuthorizationServerRuntimeConfig][runtime-config]. Validation: [AuthorizationServerRecorder][recorder] and [AuthorizationServerEndpoints][endpoints].

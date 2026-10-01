@@ -69,7 +69,7 @@ Source: [ClientSettings][client-settings], applied by [RegisteredClientRepositor
 | --- | --- | --- |
 | `require-proof-key` → `requireProofKey(...)` | boolean · `true` | Requires S256 PKCE. A confidential client can set `false`; a public Code exchange still requires PKCE. A supplied challenge must use S256. |
 | `require-authorization-consent` → `requireAuthorizationConsent(...)` | boolean · `false`; public Code client: `true` | Used by consent policy. `true` does not force a page for scopes already consented to. See default inference below. |
-| `jwk-set-url` → `jwkSetUrl(...)` | `String` · unset | Required for `private_key_jwt` and `self_signed_tls_client_auth`. HTTP(S) URL with a host, no user info or fragment. Publishes the **client's** keys. |
+| `jwk-set-url` → `jwkSetUrl(...)` | `String` · unset | Required for `private_key_jwt` and `self_signed_tls_client_auth`. HTTPS URL with a host, no user info or fragment; subject to the [outbound destination policy](#client-jwks). Publishes the **client's** keys. |
 | `x509-certificate-subject-dn` → `x509CertificateSubjectDN(...)` | `String` · unset | Required for `tls_client_auth`; nonblank DN parsed and compared using `X500Principal`. |
 | `token-endpoint-authentication-signing-algorithm` → `tokenEndpointAuthenticationSigningAlgorithm(...)` | `String` → `JwsAlgorithm` · unset | Required for JWT assertion clients: RS256/384/512, PS256/384/512, ES256/384/512 for `private_key_jwt`; HS256/384/512 for `client_secret_jwt`. Unknown names are rejected. |
 
@@ -78,6 +78,34 @@ Source: [ClientSettings][client-settings], applied by [RegisteredClientRepositor
 `ClientSettings.builder()` itself defaults to PKCE `true` and consent `false`. When no `ClientSettings` is explicitly provided, `RegisteredClient.Builder` infers consent `true` for a client with `authorization_code` and **exactly one** authentication method, `none`. Configured clients preserve this inference before applying explicit overrides. Supplying your own `ClientSettings` means you own those values; it does not repeat that inference.
 
 `ClientSettings.withSettings(map)` copies existing settings rather than adding Builder defaults. Use it to adapt a complete settings object, not as a shortcut for default initialization. See [PkceVerifier][pkce] for the independent public-client PKCE requirement and [ClientJwkSetCache][jwks] for URL validation.
+
+## Outbound client JWKS {#client-jwks}
+
+The HTTPS requirement applies to downloading **client** verification keys. It does not change the authorization server's HTTP listener or issuer configuration; local authorization endpoints can still use HTTP.
+
+JWKS downloads use Vert.x HTTP Client. Every download or refresh resolves the hostname, rejects non-public DNS answers by default, and connects to the checked IP while retaining the original host for TLS verification. Redirects are rejected. The request timeout is 15 seconds and the response size limit is 512 KiB. Both `private_key_jwt` and `self_signed_tls_client_auth` use this transport, including clients supplied directly by an application repository.
+
+Outbound requests include `Cache-Control: no-cache` so proxies revalidate cached keys, including when an unknown `kid` triggers a refresh. The local jose4j key cache still uses the response cache lifetime. If the waiting worker is interrupted or times out, the request is cancelled; a connection acquired afterwards cannot send that cancelled request.
+
+OIDC registration rejects non-HTTPS URLs and prohibited literal/localhost destinations even when the application replaces its registration validator. Hostnames are resolved when keys are actually downloaded; registration itself does not fetch keys. These mandatory checks implement the [OIDC registration HTTPS requirement](https://openid.net/specs/openid-connect-registration-1_0.html#ClientMetadata) and constrain outbound access.
+
+For an intentionally private JWKS endpoint, configure its exact HTTPS origin (host and port). The exception applies only to that origin, not subdomains or other ports. HTTPS and certificate/hostname verification still apply. To trust a private CA, select a named Quarkus TLS configuration:
+
+```yaml
+quarkus:
+  authorization-server:
+    client-jwks:
+      allowed-private-origins:
+        - https://keys.internal.example:8443
+      tls-configuration-name: client-jwks
+  tls:
+    client-jwks:
+      trust-store:
+        pem:
+          certs: client-jwks-ca.pem
+```
+
+Both settings are runtime configuration and apply to all authorization-server tenants. `allowed-private-origins` is empty by default; `tls-configuration-name` is unset and uses system trust by default. Wildcards, HTTP origins, paths other than `/`, and queries are not accepted in the origin list. The named TLS configuration supplies trust and optional client credentials. The JWKS client is initialized with Quarkus `@Startup`, without downloading keys. Selecting a TLS configuration with `trust-all=true` fails startup, independently of whether an authentication request occurs; configure a trusted CA instead. JWKS downloads always verify hostnames, even if the named configuration disables hostname verification.
 
 ## TokenSettings mapping {#token-settings}
 

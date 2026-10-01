@@ -43,7 +43,8 @@ class X509ClientAuthenticationTest {
     static final QuarkusUnitTest unitTest = new QuarkusUnitTest().withApplicationRoot(jar -> {
         jar.addClasses(ClientCertificateTestSupport.class, ClientCertificateTestSupport.JwksResource.class,
                 ClientAssertionTestSupport.class, RegistrationScopePolicy.class);
-        for (String resource : List.of("server.p12", "truststore.p12", "ca-client.p12", "ca-leaf-only.p12", "wrong-client.p12",
+        for (String resource : List.of("server.p12", "ca.pem", "truststore.p12", "ca-client.p12", "ca-leaf-only.p12",
+                "wrong-client.p12",
                 "self-client.p12", "self-ec.p12", "untrusted.p12", "self-same-dn.p12", "self-client.pem", "self-ec.pem")) {
             jar.addAsResource("mtls/" + resource);
         }
@@ -51,6 +52,9 @@ class X509ClientAuthenticationTest {
                 new StringAsset(
                         """
                                 quarkus.http.root-path=/api
+                                quarkus.tls.jwks.trust-store.pem.certs=mtls/ca.pem
+                                quarkus.authorization-server.client-jwks.tls-configuration-name=jwks
+                                quarkus.authorization-server.client-jwks.allowed-private-origins=https://localhost:8444
                                 quarkus.http.ssl.client-auth=request
                                 quarkus.http.ssl.certificate.key-store-file=mtls/server.p12
                                 quarkus.http.ssl.certificate.key-store-password=password
@@ -68,7 +72,7 @@ class X509ClientAuthenticationTest {
                                 quarkus.authorization-server.clients.pki.redirect-uris=https://client.example/callback
                                 quarkus.authorization-server.clients.pki.scopes=message.read
                                 quarkus.authorization-server.clients.self.client-authentication-methods=self_signed_tls_client_auth
-                                quarkus.authorization-server.clients.self.jwk-set-url=http://localhost:8081/api/fixture/jwks
+                                quarkus.authorization-server.clients.self.jwk-set-url=https://localhost:8444/api/fixture/jwks
                                 quarkus.authorization-server.clients.self.authorization-grant-types=client_credentials,urn:ietf:params:oauth:grant-type:device_code,authorization_code
                                 quarkus.authorization-server.clients.self.redirect-uris=https://client.example/callback
                                 quarkus.authorization-server.clients.self.scopes=message.read
@@ -185,7 +189,7 @@ class X509ClientAuthenticationTest {
                 .build());
         String property = method.equals("tls_client_auth") ? "tls_client_auth_subject_dn" : "jwks_uri";
         String value = method.equals("tls_client_auth") ? "O=OAuth Test,CN=ca-client"
-                : "http://localhost:8081/api/fixture/jwks";
+                : "https://localhost:8444/api/fixture/jwks";
         var registration = X509ClientAuthenticationTest.request(null).auth().oauth2(initial).contentType(ContentType.JSON)
                 .body(java.util.Map.of("redirect_uris", List.of("https://rp.example/callback"),
                         "grant_types", List.of("client_credentials"), "scope", "message.read",

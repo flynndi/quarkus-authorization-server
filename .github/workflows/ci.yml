@@ -35,7 +35,10 @@ jobs:
       # Unlike build, check verifies formatting without rewriting committed sources.
       # Keep Quarkus test applications sequential because they share HTTP test ports.
       - name: Check formatting and run JVM tests
-        run: ./gradlew check --no-daemon --no-parallel --max-workers=2 --console=plain --stacktrace
+        run: >-
+          ./gradlew check
+          "-Dorg.gradle.jvmargs=-Xmx2g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8"
+          --no-daemon --no-parallel --max-workers=2 --console=plain --stacktrace
       - name: Upload JVM reports
         if: ${{ always() }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
@@ -92,6 +95,7 @@ jobs:
           -Dquarkus.native.native-image-xmx=6g
           "-Dquarkus.profile=${TEST_PROFILE}"
           "-Dquarkus.test.integration-test-profile=${TEST_PROFILE}"
+          "-Dorg.gradle.jvmargs=-Xmx2g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8"
           --no-daemon --no-parallel --max-workers=2 --console=plain --stacktrace
       - name: Upload Native reports
         if: ${{ always() }}

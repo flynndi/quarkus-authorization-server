@@ -8,7 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -43,6 +45,7 @@ import io.quarkiverse.authorization.server.grant.devicecode.DeviceCodeGenerator;
 import io.quarkiverse.authorization.server.grant.devicecode.DeviceConsentCustomizer;
 import io.quarkiverse.authorization.server.grant.devicecode.DeviceConsentPolicy;
 import io.quarkiverse.authorization.server.grant.devicecode.UserCodeGenerator;
+import io.quarkiverse.authorization.server.model.AuthorizationGrantType;
 import io.quarkiverse.authorization.server.model.OAuth2AuthenticationException;
 import io.quarkiverse.authorization.server.model.OAuth2ErrorCodes;
 import io.quarkiverse.authorization.server.runtime.grant.authorizationcode.authorization.DefaultAuthorizationConsentPolicy;
@@ -62,6 +65,7 @@ import io.quarkus.vertx.http.runtime.security.ChallengeData;
 import io.quarkus.vertx.http.runtime.security.HttpAuthenticationMechanism;
 import io.quarkus.vertx.http.runtime.security.HttpCredentialTransport;
 import io.restassured.http.ContentType;
+import io.restassured.path.json.JsonPath;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 import io.smallrye.mutiny.Uni;
@@ -79,14 +83,19 @@ class AuthorizationEndpointPolicyTest {
                             CodePolicyInterceptor.class,
                             PolicyRequestProbe.class,
                             PolicyRequestProbe.Observations.class)
+                            .addAsResource("privateKey.pem")
+                            .addAsResource("publicKey.pem")
                             .addAsResource(
                                     new StringAsset(
                                             """
                                                     quarkus.authorization-server.issuer=https://issuer.example
+                                                    quarkus.authorization-server.signing.key-id=test-key
+                                                    quarkus.authorization-server.signing.private-key-location=classpath:privateKey.pem
+                                                    quarkus.authorization-server.signing.public-key-location=classpath:publicKey.pem
                                                     quarkus.authorization-server.clients.policy.client-secret=$2a$10$3bgssgqbOgnoJMXLtqLvx.vYFvvDpzVJuBZqtIp7qhbV0YjUxdQXK
-                                                    quarkus.authorization-server.clients.policy.authorization-grant-types=authorization_code,urn:ietf:params:oauth:grant-type:device_code
+                                                    quarkus.authorization-server.clients.policy.authorization-grant-types=authorization_code,urn:ietf:params:oauth:grant-type:device_code,refresh_token
                                                     quarkus.authorization-server.clients.policy.redirect-uris=https://client.example/callback
-                                                    quarkus.authorization-server.clients.policy.scopes=message.read,openid
+                                                    quarkus.authorization-server.clients.policy.scopes=message.read,message.write,openid
                                                     quarkus.authorization-server.clients.public.client-authentication-methods=none
                                                     quarkus.authorization-server.clients.public.authorization-grant-types=authorization_code
                                                     quarkus.authorization-server.clients.public.redirect-uris=https://client.example/callback
@@ -325,6 +334,54 @@ class AuthorizationEndpointPolicyTest {
         this.observations.assertReleased(List.of("device-consent"));
     }
 
+    @Test
+    void customizedDeviceConsentScopesReachAccessAndRefreshTokens() {
+        String owner = "narrow-" + UUID.randomUUID();
+        var client = this.clients.findByClientId("policy");
+        this.consents.save(OAuth2AuthorizationConsent.withId(client.getId(), owner)
+                .scope("message.write").scope("historical").build());
+        Response device = given().auth().preemptive().basic("policy", "client-secret")
+                .contentType(ContentType.URLENC).formParam("scope", "message.read message.write")
+                .post("/oauth2/device_authorization").then().statusCode(200).extract().response();
+        String userCode = device.path("user_code");
+        Response page = given().header("user", owner).queryParam("user_code", userCode)
+                .get("/oauth2/device_verification").then().statusCode(200).extract().response();
+
+        given().header("user", owner).contentType(ContentType.URLENC)
+                .formParam("client_id", "policy").formParam("user_code", userCode)
+                .formParam("state", AuthorizationEndpointPolicyTest.hidden(page, "state"))
+                .formParam("approved", true).formParam("scope", "message.read")
+                .post("/oauth2/device_verification").then().statusCode(200);
+
+        Response tokens = given().auth().preemptive().basic("policy", "client-secret")
+                .contentType(ContentType.URLENC)
+                .formParam("grant_type", AuthorizationGrantType.DEVICE_CODE.getValue())
+                .formParam("device_code", device.<String> path("device_code"))
+                .post("/oauth2/token").then().statusCode(200)
+                .body("scope", equalTo("message.read")).extract().response();
+        var saved = this.authorizations.findByToken(tokens.path("access_token"), OAuth2TokenType.ACCESS_TOKEN);
+        assertEquals(Set.of("message.read"), saved.getAuthorizedScopes());
+        assertEquals(Set.of("message.read", "historical"), this.consents.findById(client.getId(), owner).getScopes());
+
+        String refreshToken = tokens.path("refresh_token");
+        assertNotNull(refreshToken);
+        given().auth().preemptive().basic("policy", "client-secret").contentType(ContentType.URLENC)
+                .formParam("grant_type", "refresh_token").formParam("refresh_token", refreshToken)
+                .formParam("scope", "message.write").post("/oauth2/token").then().statusCode(400)
+                .body("error", equalTo("invalid_scope"));
+        Response refreshed = given().auth().preemptive().basic("policy", "client-secret")
+                .contentType(ContentType.URLENC)
+                .formParam("grant_type", "refresh_token").formParam("refresh_token", refreshToken)
+                .post("/oauth2/token").then().statusCode(200)
+                .body("scope", equalTo("message.read")).extract().response();
+        for (Response response : List.of(tokens, refreshed)) {
+            String jwt = response.path("access_token");
+            JsonPath claims = JsonPath.from(new String(Base64.getUrlDecoder().decode(jwt.split("\\.")[1]),
+                    StandardCharsets.UTF_8));
+            assertEquals(List.of("message.read"), claims.getList("scope"));
+        }
+    }
+
     private static RequestSpecification authorization(String client, String state) {
         return authorization(client, state, "owner");
     }
@@ -493,6 +550,9 @@ class AuthorizationEndpointPolicyTest {
                 this.request.visit("device-consent");
                 assertEquals("/oauth2/device_verification", this.http.request().path());
                 context.authorizationConsent().authority("device:policy");
+                if (context.request().getPrincipal().getPrincipal().getName().startsWith("narrow-")) {
+                    context.authorizationConsent().authorities(authorities -> authorities.remove("SCOPE_message.write"));
+                }
             };
         }
     }

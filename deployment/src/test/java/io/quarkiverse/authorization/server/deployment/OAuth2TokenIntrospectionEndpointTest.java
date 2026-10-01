@@ -18,6 +18,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkiverse.authorization.server.authorization.OAuth2Authorization;
 import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationService;
+import io.quarkiverse.authorization.server.endpoint.OAuth2ParameterNames;
 import io.quarkiverse.authorization.server.token.OAuth2TokenType;
 import io.quarkus.elytron.security.common.BcryptUtil;
 import io.quarkus.test.QuarkusUnitTest;
@@ -87,6 +88,20 @@ class OAuth2TokenIntrospectionEndpointTest {
 
         introspectionRequest(token).post(INTROSPECTION_PATH).then().statusCode(200)
                 .body("$", aMapWithSize(1)).body("active", equalTo(false));
+    }
+
+    @Test
+    void consentStateReturnsOnlyActiveFalse() {
+        String token = issueOpaqueToken();
+        OAuth2Authorization authorization = this.authorizations.findByToken(token, OAuth2TokenType.ACCESS_TOKEN);
+        this.authorizations.save(OAuth2Authorization.from(authorization)
+                .attribute(OAuth2ParameterNames.STATE, "introspection-consent-state")
+                .build());
+
+        introspectionRequest("introspection-consent-state").post(INTROSPECTION_PATH)
+                .then().statusCode(200).body("$", aMapWithSize(1)).body("active", equalTo(false));
+        introspectionRequest(token).post(INTROSPECTION_PATH)
+                .then().statusCode(200).body("active", equalTo(true));
     }
 
     @Test

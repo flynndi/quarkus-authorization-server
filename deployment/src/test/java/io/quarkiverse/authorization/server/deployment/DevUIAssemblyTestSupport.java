@@ -1,6 +1,5 @@
 package io.quarkiverse.authorization.server.deployment;
 
-import java.security.KeyPairGenerator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -8,6 +7,7 @@ import io.quarkiverse.authorization.server.client.RegisteredClient;
 import io.quarkiverse.authorization.server.client.RegisteredClientRepository;
 import io.quarkiverse.authorization.server.jose.jws.SignatureAlgorithm;
 import io.quarkiverse.authorization.server.token.AuthorizationServerKeySource;
+import io.smallrye.jwt.util.KeyUtils;
 
 final class DevUIAssemblyTestSupport {
     public static final class OnceKeySource implements AuthorizationServerKeySource {
@@ -24,9 +24,7 @@ final class DevUIAssemblyTestSupport {
                 throw new IllegalStateException("Dev UI must never reload signing keys");
             }
             try {
-                var generator = KeyPairGenerator.getInstance("RSA");
-                generator.initialize(2048);
-                var pair = generator.generateKeyPair();
+                var pair = KeyUtils.generateKeyPair(2048);
                 return new KeySet(List.of(new Key(this.id, SignatureAlgorithm.RS256, pair.getPrivate(), pair.getPublic())),
                         this.id);
             } catch (java.security.GeneralSecurityException exception) {

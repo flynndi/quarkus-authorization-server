@@ -1,13 +1,12 @@
 package io.quarkiverse.authorization.server.deployment;
 
 import java.nio.charset.StandardCharsets;
-import java.security.KeyFactory;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.util.Base64;
 
 import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.jwt.JwtClaims;
 import org.jose4j.keys.HmacKey;
+
+import io.smallrye.jwt.util.KeyUtils;
 
 /** JWT signing fixture shared by isolated client-authentication and registration applications. */
 public final class ClientAssertionTestSupport {
@@ -27,12 +26,10 @@ public final class ClientAssertionTestSupport {
             jws.setKey(new HmacKey(secret.getBytes(StandardCharsets.UTF_8)));
         } else {
             try (var input = ClientAssertionTestSupport.class.getClassLoader().getResourceAsStream("privateKey.pem")) {
-                String pem = new String(input.readAllBytes(), StandardCharsets.US_ASCII)
-                        .replaceAll("-----[^-]+-----", "").replaceAll("\\s", "");
+                String pem = new String(input.readAllBytes(), StandardCharsets.US_ASCII);
                 jws.setAlgorithmHeaderValue("RS256");
                 jws.setKeyIdHeaderValue(kid);
-                jws.setKey(KeyFactory.getInstance("RSA")
-                        .generatePrivate(new PKCS8EncodedKeySpec(Base64.getDecoder().decode(pem))));
+                jws.setKey(KeyUtils.decodePrivateKey(pem));
             }
         }
         return jws.getCompactSerialization();

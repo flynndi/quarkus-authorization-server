@@ -11,6 +11,8 @@ import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
 import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationService;
 import io.quarkiverse.authorization.server.client.RegisteredClient;
 import io.quarkiverse.authorization.server.client.RegisteredClientRepository;
@@ -43,7 +45,8 @@ public class ClientCredentialsServerConfig {
     }
 
     void initialize(@Observes @Priority(100) StartupEvent event, DataSource dataSource,
-            RegisteredClientRepository clients, AuthorizationServerSettings settings) throws SQLException {
+            RegisteredClientRepository clients, AuthorizationServerSettings settings,
+            @ConfigProperty(name = "test-client.jwks-origin") String jwksOrigin) throws SQLException {
         // Use the extension's schema resources; initialization belongs only to this test application.
         try (Connection connection = dataSource.getConnection()) {
             schema(connection, "OAUTH2_REGISTERED_CLIENT", JdbcRegisteredClientRepository.SCHEMA_LOCATION);
@@ -80,7 +83,7 @@ public class ClientCredentialsServerConfig {
             clients.save(RegisteredClient.withId("jwt-private-registration").clientId("jwt-private")
                     .clientAuthenticationMethod(ClientAuthenticationMethod.PRIVATE_KEY_JWT)
                     .clientSettings(ClientSettings.builder()
-                            .jwkSetUrl(settings.getIssuer() + settings.getJwkSetEndpoint())
+                            .jwkSetUrl(jwksOrigin + settings.getJwkSetEndpoint())
                             .tokenEndpointAuthenticationSigningAlgorithm(SignatureAlgorithm.RS256).build())
                     .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS).scope("message.read").build());
         }

@@ -1,6 +1,5 @@
 package io.quarkiverse.authorization.server.deployment;
 
-import java.security.KeyPairGenerator;
 import java.util.List;
 
 import jakarta.enterprise.inject.Produces;
@@ -21,6 +20,7 @@ import io.quarkiverse.authorization.server.tenant.AuthorizationServerTenant;
 import io.quarkiverse.authorization.server.token.AuthorizationServerKeySource;
 import io.quarkus.elytron.security.common.BcryptUtil;
 import io.smallrye.common.annotation.Identifier;
+import io.smallrye.jwt.util.KeyUtils;
 
 final class MultipleIssuersTestSupport {
     static JavaArchive application(JavaArchive jar, boolean proactive) {
@@ -82,9 +82,7 @@ final class MultipleIssuersTestSupport {
                     .clientSettings(ClientSettings.builder().tokenEndpointAuthenticationSigningAlgorithm(
                             io.quarkiverse.authorization.server.jose.jws.MacAlgorithm.HS256).build())
                     .build());
-            var generator = KeyPairGenerator.getInstance("RSA");
-            generator.initialize(2048);
-            var pair = generator.generateKeyPair();
+            var pair = KeyUtils.generateKeyPair(2048);
             return new AuthorizationServerTenant(clients, new InMemoryOAuth2AuthorizationService(),
                     new InMemoryOAuth2AuthorizationConsentService(),
                     () -> new AuthorizationServerKeySource.KeySet(List.of(new AuthorizationServerKeySource.Key(name,

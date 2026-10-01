@@ -14,8 +14,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.security.KeyFactory;
-import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Duration;
 import java.util.Base64;
 
@@ -29,6 +27,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
+import io.smallrye.jwt.util.KeyUtils;
 
 /** HTTP-only contract reused against the packaged JVM; no mocked identity, token generator or repository. */
 @QuarkusTest
@@ -47,10 +46,8 @@ public class ClientCredentialsTest {
         assertion.setPayload(claims.toJson());
         if ("jwt-private".equals(clientId)) {
             try (var input = ClientCredentialsTest.class.getClassLoader().getResourceAsStream("test-private-key.pem")) {
-                String pem = new String(input.readAllBytes(), StandardCharsets.US_ASCII)
-                        .replaceAll("-----[^-]+-----", "").replaceAll("\\s", "");
-                assertion.setKey(KeyFactory.getInstance("RSA")
-                        .generatePrivate(new PKCS8EncodedKeySpec(Base64.getDecoder().decode(pem))));
+                String pem = new String(input.readAllBytes(), StandardCharsets.US_ASCII);
+                assertion.setKey(KeyUtils.decodePrivateKey(pem));
             }
             assertion.setAlgorithmHeaderValue("RS256");
             assertion.setKeyIdHeaderValue("client-credentials-test-key");

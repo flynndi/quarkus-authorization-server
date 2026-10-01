@@ -9,13 +9,13 @@ import io.quarkiverse.authorization.server.dpop.DPoPProof;
 import io.quarkiverse.authorization.server.model.OAuth2AuthenticationException;
 import io.quarkiverse.authorization.server.model.OAuth2ErrorCodes;
 import io.quarkiverse.authorization.server.runtime.dpop.DPoPTokenBinding;
+import io.quarkiverse.authorization.server.runtime.web.ProtocolExecutor;
 import io.quarkiverse.authorization.server.token.OAuth2TokenType;
 import io.quarkus.security.identity.AuthenticationRequestContext;
 import io.quarkus.security.identity.IdentityProvider;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.runtime.QuarkusPrincipal;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
-import io.quarkus.vertx.VertxContextSupport;
 import io.smallrye.mutiny.Uni;
 
 /**
@@ -26,12 +26,14 @@ public final class OAuth2AccessTokenIdentityProvider
         implements IdentityProvider<OAuth2AccessTokenAuthenticationRequest> {
     private final OAuth2AuthorizationService authorizationService;
     private final DPoPTokenBinding dpop;
+    private final ProtocolExecutor executor;
 
     @Inject
     public OAuth2AccessTokenIdentityProvider(
-            OAuth2AuthorizationService authorizationService, DPoPTokenBinding dpop) {
+            OAuth2AuthorizationService authorizationService, DPoPTokenBinding dpop, ProtocolExecutor executor) {
         this.authorizationService = authorizationService;
         this.dpop = dpop;
+        this.executor = executor;
     }
 
     @Override
@@ -42,7 +44,7 @@ public final class OAuth2AccessTokenIdentityProvider
     @Override
     public Uni<SecurityIdentity> authenticate(
             OAuth2AccessTokenAuthenticationRequest request, AuthenticationRequestContext context) {
-        return VertxContextSupport.executeBlocking(() -> authenticateToken(request));
+        return this.executor.execute(request, () -> authenticateToken(request));
     }
 
     // The lazy Quarkus boundary schedules work after the Uni has been assembled,

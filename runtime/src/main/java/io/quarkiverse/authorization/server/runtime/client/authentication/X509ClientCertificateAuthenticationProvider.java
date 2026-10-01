@@ -8,12 +8,12 @@ import io.quarkiverse.authorization.server.client.RegisteredClientRepository;
 import io.quarkiverse.authorization.server.model.ClientAuthenticationMethod;
 import io.quarkiverse.authorization.server.model.OAuth2AuthenticationException;
 import io.quarkiverse.authorization.server.model.OAuth2ErrorCodes;
+import io.quarkiverse.authorization.server.runtime.web.ProtocolExecutor;
 import io.quarkus.security.identity.AuthenticationRequestContext;
 import io.quarkus.security.identity.IdentityProvider;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.runtime.QuarkusPrincipal;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
-import io.quarkus.vertx.VertxContextSupport;
 import io.smallrye.mutiny.Uni;
 
 /** Authenticates TLS client certificates through the native Quarkus identity-provider chain. */
@@ -22,12 +22,14 @@ public final class X509ClientCertificateAuthenticationProvider
         implements IdentityProvider<X509ClientCertificateAuthenticationRequest> {
     private final RegisteredClientRepository clients;
     private final X509ClientCertificateVerifier verifier;
+    private final ProtocolExecutor executor;
 
     @Inject
     public X509ClientCertificateAuthenticationProvider(RegisteredClientRepository clients,
-            X509ClientCertificateVerifier verifier) {
+            X509ClientCertificateVerifier verifier, ProtocolExecutor executor) {
         this.clients = clients;
         this.verifier = verifier;
+        this.executor = executor;
     }
 
     @Override
@@ -39,7 +41,7 @@ public final class X509ClientCertificateAuthenticationProvider
     public Uni<SecurityIdentity> authenticate(X509ClientCertificateAuthenticationRequest request,
             AuthenticationRequestContext context) {
         // JDBC, remote JWKS and crypto execute with a Quarkus worker and active CDI request scope.
-        return VertxContextSupport.executeBlocking(() -> {
+        return this.executor.execute(request, () -> {
             RegisteredClient client = this.clients.findByClientId(request.getClientId());
             if (client == null)
                 throw new OAuth2AuthenticationException(OAuth2ErrorCodes.INVALID_CLIENT);

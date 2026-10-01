@@ -13,12 +13,12 @@ import io.quarkiverse.authorization.server.model.ClientAuthenticationMethod;
 import io.quarkiverse.authorization.server.model.OAuth2AuthenticationException;
 import io.quarkiverse.authorization.server.model.OAuth2Error;
 import io.quarkiverse.authorization.server.model.OAuth2ErrorCodes;
+import io.quarkiverse.authorization.server.runtime.web.ProtocolExecutor;
 import io.quarkus.security.identity.AuthenticationRequestContext;
 import io.quarkus.security.identity.IdentityProvider;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.runtime.QuarkusPrincipal;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
-import io.quarkus.vertx.VertxContextSupport;
 import io.smallrye.mutiny.Uni;
 
 /**
@@ -31,13 +31,15 @@ public final class ClientSecretAuthenticationProvider implements IdentityProvide
 
     private final RegisteredClientRepository registeredClientRepository;
     private final ClientSecretVerifier clientSecretVerifier;
+    private final ProtocolExecutor executor;
 
     @Inject
     public ClientSecretAuthenticationProvider(
             RegisteredClientRepository registeredClientRepository,
-            ClientSecretVerifier clientSecretVerifier) {
+            ClientSecretVerifier clientSecretVerifier, ProtocolExecutor executor) {
         this.registeredClientRepository = registeredClientRepository;
         this.clientSecretVerifier = clientSecretVerifier;
+        this.executor = executor;
     }
 
     @Override
@@ -53,7 +55,7 @@ public final class ClientSecretAuthenticationProvider implements IdentityProvide
             return Uni.createFrom().nullItem();
         }
 
-        return VertxContextSupport.executeBlocking(() -> authenticateClient(authentication));
+        return this.executor.execute(authentication, () -> authenticateClient(authentication));
     }
 
     // The lazy Quarkus boundary schedules work after the Uni has been assembled,

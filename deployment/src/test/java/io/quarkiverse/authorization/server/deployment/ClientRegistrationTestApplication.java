@@ -29,8 +29,14 @@ public final class ClientRegistrationTestApplication {
                 .addClasses(ClientRegistrationTestApplication.class, ResourceOwner.class, OtherResource.class,
                         ClientAssertionTestSupport.class)
                 .addAsResource("privateKey.pem").addAsResource("publicKey.pem")
+                .addAsResource("mtls/server.p12").addAsResource("mtls/ca.pem")
                 .addAsResource(new StringAsset("""
                         quarkus.http.root-path=/api
+                        quarkus.http.ssl.certificate.key-store-file=mtls/server.p12
+                        quarkus.http.ssl.certificate.key-store-password=password
+                        quarkus.tls.jwks.trust-store.pem.certs=mtls/ca.pem
+                        quarkus.authorization-server.client-jwks.tls-configuration-name=jwks
+                        quarkus.authorization-server.client-jwks.allowed-private-origins=https://localhost:8444
                         quarkus.http.auth.basic=true
                         quarkus.http.auth.proactive=false
                         quarkus.authorization-server.issuer=https://issuer.example/api

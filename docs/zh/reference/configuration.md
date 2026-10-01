@@ -111,6 +111,21 @@ HTTP permission 遵循 Quarkus 的组合规则，不等同于普通配置值覆�
 
 构建阶段会检查扩展已启用的协议端点和固定 discovery 路由：有效路径重叠且占用相同 HTTP 方法时，报告冲突端点、配置项、路径和方法。检查使用 Quarkus 的 HTTP root 路径解析，并考虑多 issuer 前缀；关闭的可选端点不占用路径。仅 GET 的 JWKS 与仅 POST 的 token 端点可以共用路径；PAR 为返回 405 接管其路径上的所有方法，因此不能与 GET 端点共用路径。此诊断针对扩展的协议路由，不检查应用自定义路由或运行期 Form 登录页地址。实现：[EndpointValidationProcessor][endpoint-validation]。
 
+## 客户端 JWKS 下载 {#client-jwks}
+
+阶段：`RUN_TIME`。前缀：`quarkus.authorization-server.client-jwks`。
+
+<div class="reference-table" role="region" aria-label="配置表，可按需横向滚动" tabindex="0">
+
+| 属性 | 类型 / 默认值 | 用途 |
+| --- | --- | --- |
+| `allowed-private-origins` | `Set<String>` · 空 | 允许解析到非公网地址的精确 HTTPS origin。默认允许公网目标，拒绝本地、私有和特殊用途地址。 |
+| `tls-configuration-name` | `String` · 未设置 | 客户端 JWKS 下载使用的命名 Quarkus TLS 配置；未设置时使用系统信任库。选中 `trust-all=true` 的配置会导致启动失败；始终要求证书和主机名校验。 |
+
+</div>
+
+目标地址检查及私有 CA 配置见[客户端 JWKS 下载](./clients#client-jwks)。此策略控制出站公钥获取，不决定授权服务器自身使用 HTTP 还是 HTTPS 监听。
+
 ## Issuer {#issuer}
 
 阶段：`RUN_TIME`。映射：[AuthorizationServerRuntimeConfig][runtime-config]。校验：[AuthorizationServerRecorder][recorder] 与 [AuthorizationServerEndpoints][endpoints]。

@@ -86,7 +86,8 @@ class OidcClientRegistrationMetadataValidatorTest {
                 OidcClientRegistrationMetadataValidatorTest.request()
                         .tokenEndpointAuthenticationMethod("client_secret_jwt")
                         .tokenEndpointAuthenticationSigningAlgorithm("RS256").build());
-        for (String url : List.of("file:/tmp/keys.json", "https://user:password@rp.example/jwks",
+        for (String url : List.of("http://127.0.0.1/jwks", "http://rp.example/jwks", "file:/tmp/keys.json",
+                "https://user:password@rp.example/jwks",
                 "https://rp.example/jwks#fragment")) {
             assertError("invalid_client_metadata", "jwks_uri", OidcClientRegistrationMetadataValidatorTest.request()
                     .tokenEndpointAuthenticationMethod("private_key_jwt").jwkSetUrl(url).build());

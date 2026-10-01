@@ -4,10 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.ByteArrayInputStream;
-import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -17,46 +17,53 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.sun.net.httpserver.HttpServer;
-
 import io.quarkiverse.authorization.server.client.RegisteredClient;
 import io.quarkiverse.authorization.server.model.AuthorizationGrantType;
 import io.quarkiverse.authorization.server.model.ClientAuthenticationMethod;
 import io.quarkiverse.authorization.server.model.OAuth2AuthenticationException;
 import io.quarkiverse.authorization.server.runtime.client.authentication.ClientJwkSetCache;
+import io.quarkiverse.authorization.server.runtime.client.authentication.ClientJwkSetUrlPolicy;
 import io.quarkiverse.authorization.server.runtime.client.authentication.X509ClientCertificateVerifier;
 import io.quarkiverse.authorization.server.settings.ClientSettings;
+import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpClientOptions;
+import io.vertx.core.http.HttpServerOptions;
+import io.vertx.core.net.PemTrustOptions;
+import io.vertx.core.net.PfxOptions;
 
 class X509ClientCertificateVerifierTest {
-    private final ClientJwkSetCache cache = new ClientJwkSetCache();
-    private final X509ClientCertificateVerifier verifier = new X509ClientCertificateVerifier(this.cache);
+    private Vertx vertx;
+    private X509ClientCertificateVerifier verifier;
     private final AtomicReference<String> jwks = new AtomicReference<>();
     private final AtomicInteger requests = new AtomicInteger();
-    private HttpServer server;
+    private io.vertx.core.http.HttpServer server;
     private String url;
 
     @BeforeEach
     void startJwks() throws Exception {
         this.jwks.set(ClientCertificateTestSupport.jwks("self-client", "self-ec"));
-        this.server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
-        this.server.createContext("/jwks", exchange -> {
-            this.requests.incrementAndGet();
-            byte[] bytes = this.jwks.get().getBytes(StandardCharsets.UTF_8);
-            exchange.getResponseHeaders().set("Content-Type", "application/json");
-            exchange.getResponseHeaders().set("Cache-Control", "max-age=300");
-            exchange.sendResponseHeaders(200, bytes.length);
-            try (var output = exchange.getResponseBody()) {
-                output.write(bytes);
-            }
-        });
-        this.server.start();
-        this.url = "http://localhost:" + this.server.getAddress().getPort() + "/jwks";
+        this.vertx = Vertx.vertx();
+        this.server = this.vertx.createHttpServer(new HttpServerOptions().setSsl(true)
+                .setPfxKeyCertOptions(new PfxOptions().setPath("mtls/server.p12").setPassword("password")))
+                .requestHandler(request -> {
+                    this.requests.incrementAndGet();
+                    request.response().putHeader("Content-Type", "application/json")
+                            .putHeader("Cache-Control", "max-age=300").end(this.jwks.get());
+                }).listen(0, "127.0.0.1").toCompletionStage().toCompletableFuture()
+                .get(5, TimeUnit.SECONDS);
+        String origin = "https://localhost:" + this.server.actualPort();
+        this.url = origin + "/jwks";
+        var http = this.vertx.createHttpClient(new HttpClientOptions()
+                .setTrustOptions(new PemTrustOptions().addCertPath("mtls/ca.pem")));
+        this.verifier = new X509ClientCertificateVerifier(new ClientJwkSetCache(http,
+                new ClientJwkSetUrlPolicy(
+                        Set.of(origin))));
     }
 
     @AfterEach
-    void stopJwks() {
-        if (this.server != null)
-            this.server.stop(0);
+    void stopJwks() throws Exception {
+        if (this.vertx != null)
+            this.vertx.close().toCompletionStage().toCompletableFuture().get(5, TimeUnit.SECONDS);
     }
 
     @Test

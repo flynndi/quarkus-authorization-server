@@ -69,7 +69,7 @@ Map key 是 OAuth `client_id`，默认没有配置客户端。每个条目初始
 | --- | --- | --- |
 | `require-proof-key` → `requireProofKey(...)` | boolean · `true` | 要求 S256 PKCE。Confidential client 可设为 `false`；public Code 兑换仍要求 PKCE。提供的 challenge 必须使用 S256。 |
 | `require-authorization-consent` → `requireAuthorizationConsent(...)` | boolean · `false`；public Code client：`true` | 供 consent 策略使用；设为 `true` 不代表已同意的 scope 每次都显示页面。默认推导见下文。 |
-| `jwk-set-url` → `jwkSetUrl(...)` | `String` · 未设置 | `private_key_jwt` 和 `self_signed_tls_client_auth` 必需；有 host、无 user info/fragment 的 HTTP(S) URL，发布的是**客户端**公钥。 |
+| `jwk-set-url` → `jwkSetUrl(...)` | `String` · 未设置 | `private_key_jwt` 和 `self_signed_tls_client_auth` 必需；有 host、无 user info/fragment 的 HTTPS URL，受[出站目标地址策略](#client-jwks)约束，发布的是**客户端**公钥。 |
 | `x509-certificate-subject-dn` → `x509CertificateSubjectDN(...)` | `String` · 未设置 | `tls_client_auth` 必需；非空白 DN，使用 `X500Principal` 解析和比较。 |
 | `token-endpoint-authentication-signing-algorithm` → `tokenEndpointAuthenticationSigningAlgorithm(...)` | `String` → `JwsAlgorithm` · 未设置 | JWT assertion client 必需：`private_key_jwt` 用 RS256/384/512、PS256/384/512、ES256/384/512；`client_secret_jwt` 用 HS256/384/512。拒绝未知名称。 |
 
@@ -78,6 +78,34 @@ Map key 是 OAuth `client_id`，默认没有配置客户端。每个条目初始
 `ClientSettings.builder()` 本身默认 PKCE 为 `true`、consent 为 `false`。没有显式提供 `ClientSettings` 时，`RegisteredClient.Builder` 为包含 `authorization_code` 且认证方式**仅有** `none` 的客户端推导 consent 为 `true`。配置注册先保留此推导，再应用显式覆盖值。自行提供 `ClientSettings` 时，值由应用负责，不会再次执行这一推导。
 
 `ClientSettings.withSettings(map)` 复制已有设置，不补齐 Builder 默认值；它适合调整完整的设置对象，不能代替默认初始化。Public client 独立的 PKCE 要求见 [PkceVerifier][pkce]，URL 校验见 [ClientJwkSetCache][jwks]。
+
+## 客户端 JWKS 下载 {#client-jwks}
+
+HTTPS 要求针对下载**客户端**验证公钥的连接，不会改变授权服务器自身的 HTTP 监听或 issuer 配置；本地授权端点仍可使用 HTTP。
+
+JWKS 下载使用 Vert.x HTTP Client。每次下载或刷新都会解析域名，默认拒绝非公网 DNS 地址，并连接已经检查的 IP，同时保留原始主机名进行 TLS 校验。禁止重定向，请求超时为 15 秒，响应体上限为 512 KiB。`private_key_jwt` 和 `self_signed_tls_client_auth` 共用该下载逻辑，应用直接通过客户端仓储提供的客户端也受此约束。
+
+出站请求携带 `Cache-Control: no-cache`，要求代理重新验证缓存的公钥，也覆盖未知 `kid` 触发的强制刷新。本地 jose4j 公钥缓存仍按响应中的缓存有效期使用。等待的 worker 被中断或超时后会取消请求；之后才取得的连接不能再发送该已取消请求。
+
+即使应用替换了注册 validator，OIDC 注册也会拒绝非 HTTPS URL 和不允许的 IP 字面量、localhost 地址。域名在实际下载公钥时解析，注册本身不会下载公钥。这些强制检查落实了 [OIDC 注册规范的 HTTPS 要求](https://openid.net/specs/openid-connect-registration-1_0.html#ClientMetadata)，并限制出站访问。
+
+需要使用内网 JWKS 服务时，配置精确的 HTTPS origin（主机名和端口）。例外只适用于该 origin，不包含子域名或其他端口，仍须使用 HTTPS 并校验证书和主机名。通过命名 Quarkus TLS 配置信任私有 CA：
+
+```yaml
+quarkus:
+  authorization-server:
+    client-jwks:
+      allowed-private-origins:
+        - https://keys.internal.example:8443
+      tls-configuration-name: client-jwks
+  tls:
+    client-jwks:
+      trust-store:
+        pem:
+          certs: client-jwks-ca.pem
+```
+
+两项均为运行期配置，作用于所有授权服务器租户。`allowed-private-origins` 默认为空；`tls-configuration-name` 默认未设置，使用系统信任库。origin 列表不接受通配符、HTTP、除 `/` 外的路径或 query。命名 TLS 配置提供信任库和可选的客户端证书。JWKS 客户端通过 Quarkus `@Startup` 在启动期初始化，此时不会下载公钥；如果选中的配置设置了 `trust-all=true`，应用启动失败，不依赖是否发生认证请求，应改为配置信任的 CA。JWKS 下载始终校验主机名，即使命名配置关闭了主机名校验。
 
 ## TokenSettings 映射 {#token-settings}
 

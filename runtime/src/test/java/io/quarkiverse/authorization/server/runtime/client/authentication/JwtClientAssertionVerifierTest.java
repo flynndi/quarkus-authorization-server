@@ -4,12 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.jose4j.jwk.EcJwkGenerator;
 import org.jose4j.jwk.JsonWebKey;
@@ -26,8 +27,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import com.sun.net.httpserver.HttpServer;
-
 import io.quarkiverse.authorization.server.client.RegisteredClient;
 import io.quarkiverse.authorization.server.context.DefaultAuthorizationServerContext;
 import io.quarkiverse.authorization.server.jose.jws.JwsAlgorithm;
@@ -42,17 +41,17 @@ import io.quarkiverse.authorization.server.settings.ClientSettings;
 class JwtClientAssertionVerifierTest {
     private static final String ISSUER = "https://issuer.example/tenant/";
     private static final String SECRET = "0123456789abcdef".repeat(4);
-    private final JwtClientAssertionVerifier verifier = new JwtClientAssertionVerifier(
+    private JwtClientAssertionVerifier verifier = new JwtClientAssertionVerifier(
             new DefaultAuthorizationServerContext(
                     AuthorizationServerSettings.builder().issuer(ISSUER).tokenEndpoint("/token").build()),
-            new ClientJwkSetCache());
-    private HttpServer server;
+            null);
+    private ClientJwksTestServer server;
     private final AtomicInteger requests = new AtomicInteger();
 
     @AfterEach
-    void stopServer() {
+    void stopServer() throws Exception {
         if (this.server != null)
-            this.server.stop(0);
+            this.server.close();
     }
 
     @ParameterizedTest
@@ -72,6 +71,41 @@ class JwtClientAssertionVerifierTest {
         assertEquals(ClientAuthenticationMethod.PRIVATE_KEY_JWT, this.verifier.verify(client, assertion));
         assertEquals(ClientAuthenticationMethod.PRIVATE_KEY_JWT, this.verifier.verify(client, assertion));
         assertEquals(1, this.requests.get(), "JWKS are cached; this verifier does not reject repeated client assertions");
+    }
+
+    @Test
+    void unknownKidRevalidatesTheProxyCacheAndAuthenticatesWithTheRotatedKey() throws Exception {
+        var oldKey = EcJwkGenerator.generateJwk(EllipticCurves.P256);
+        oldKey.setKeyId("old-key");
+        var newKey = EcJwkGenerator.generateJwk(EllipticCurves.P256);
+        newKey.setKeyId("new-key");
+        AtomicReference<String> originKeys = new AtomicReference<>(
+                new JsonWebKeySet(oldKey).toJson(JsonWebKey.OutputControlLevel.PUBLIC_ONLY));
+        AtomicReference<String> proxyKeys = new AtomicReference<>(originKeys.get());
+        this.server = new ClientJwksTestServer(request -> {
+            this.requests.incrementAndGet();
+            // A fresh proxy entry is served until the caller explicitly requires revalidation.
+            if ("no-cache".equals(request.getHeader("Cache-Control"))) {
+                proxyKeys.set(originKeys.get());
+            }
+            request.response().putHeader("Cache-Control", "max-age=300").end(proxyKeys.get());
+        });
+        String url = this.server.origin() + "/jwks";
+        var cache = this.server.cache(Set.of(this.server.origin()));
+        // Exercise key rotation immediately, independently of jose4j's short refresh reprieve.
+        cache.get(url).setRefreshReprieveThreshold(0);
+        this.verifier = new JwtClientAssertionVerifier(new DefaultAuthorizationServerContext(
+                AuthorizationServerSettings.builder().issuer(ISSUER).tokenEndpoint("/token").build()), cache);
+        RegisteredClient client = JwtClientAssertionVerifierTest.client(SignatureAlgorithm.ES256, url);
+        String initial = JwtClientAssertionVerifierTest.sign(JwtClientAssertionVerifierTest.claims(), "ES256",
+                oldKey.getPrivateKey(), oldKey.getKeyId());
+        assertEquals(ClientAuthenticationMethod.PRIVATE_KEY_JWT, this.verifier.verify(client, initial));
+        originKeys.set(new JsonWebKeySet(newKey).toJson(JsonWebKey.OutputControlLevel.PUBLIC_ONLY));
+        String rotated = JwtClientAssertionVerifierTest.sign(JwtClientAssertionVerifierTest.claims(), "ES256",
+                newKey.getPrivateKey(), newKey.getKeyId());
+        assertEquals(ClientAuthenticationMethod.PRIVATE_KEY_JWT, this.verifier.verify(client, rotated));
+        assertEquals(ClientAuthenticationMethod.PRIVATE_KEY_JWT, this.verifier.verify(client, rotated));
+        assertEquals(2, this.requests.get(), "Initial download and one refresh; the rotated keys are cached locally");
     }
 
     @ParameterizedTest
@@ -198,17 +232,14 @@ class JwtClientAssertionVerifierTest {
 
     private String publish(PublicJsonWebKey key) throws Exception {
         byte[] json = new JsonWebKeySet(key).toJson(JsonWebKey.OutputControlLevel.PUBLIC_ONLY).getBytes(StandardCharsets.UTF_8);
-        this.server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        this.server.createContext("/jwks", exchange -> {
+        this.server = new ClientJwksTestServer(request -> {
             this.requests.incrementAndGet();
-            exchange.getResponseHeaders().set("Cache-Control", "max-age=300");
-            exchange.sendResponseHeaders(200, json.length);
-            try (var output = exchange.getResponseBody()) {
-                output.write(json);
-            }
+            request.response().putHeader("Cache-Control", "max-age=300").end(io.vertx.core.buffer.Buffer.buffer(json));
         });
-        this.server.start();
-        return "http://127.0.0.1:" + this.server.getAddress().getPort() + "/jwks";
+        this.verifier = new JwtClientAssertionVerifier(new DefaultAuthorizationServerContext(
+                AuthorizationServerSettings.builder().issuer(ISSUER).tokenEndpoint("/token").build()),
+                this.server.cache(java.util.Set.of(this.server.origin())));
+        return this.server.origin() + "/jwks";
     }
 
     private static RegisteredClient client(JwsAlgorithm algorithm, String url) {

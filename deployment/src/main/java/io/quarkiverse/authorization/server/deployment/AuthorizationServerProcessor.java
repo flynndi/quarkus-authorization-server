@@ -10,6 +10,7 @@ import io.quarkiverse.authorization.server.authorization.InMemoryOAuth2Authoriza
 import io.quarkiverse.authorization.server.runtime.AuthorizationServerRecorder;
 import io.quarkiverse.authorization.server.runtime.client.BcryptClientSecretVerifier;
 import io.quarkiverse.authorization.server.runtime.client.authentication.ClientJwkSetCache;
+import io.quarkiverse.authorization.server.runtime.client.authentication.ClientJwkSetUrlPolicy;
 import io.quarkiverse.authorization.server.runtime.client.authentication.ClientSecretAuthenticationProvider;
 import io.quarkiverse.authorization.server.runtime.client.authentication.JwtClientAssertionAuthenticationProvider;
 import io.quarkiverse.authorization.server.runtime.client.authentication.JwtClientAssertionVerifier;
@@ -156,6 +157,7 @@ class AuthorizationServerProcessor {
                         JwtClientAssertionAuthenticationProvider.class,
                         JwtClientAssertionVerifier.class,
                         ClientJwkSetCache.class,
+                        ClientJwkSetUrlPolicy.class,
                         X509ClientCertificateAuthenticationProvider.class,
                         X509ClientCertificateVerifier.class,
                         X509ClientCertificateAuthenticationConverter.class,

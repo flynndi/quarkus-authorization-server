@@ -13,4 +13,4 @@ Run `bash generate.sh` to recreate the fixtures with OpenSSL and JDK keytool. Th
 - `expired`: a certificate valid only on 2020-01-01, for verifier expiry checks.
 - `truststore`: the CA and explicitly pinned self-signed peers, excluding `untrusted`.
 
-`X509ClientAuthenticationTest` uses HTTPS with real key/trust stores, without relaxed HTTPS validation. Its JWKS fixture is HTTP on localhost, explicitly allowed by the registration test policy. Native verification is deferred.
+`X509ClientAuthenticationTest` uses HTTPS with real key/trust stores, without relaxed HTTPS validation. Its JWKS fixture uses HTTPS on localhost, with an explicit private-origin exception and the test CA configured through the Quarkus TLS registry. The runtime JWKS tests reuse copies of `server.p12` and `ca.pem` in `runtime/src/test/resources/jwks`. Native verification is deferred.

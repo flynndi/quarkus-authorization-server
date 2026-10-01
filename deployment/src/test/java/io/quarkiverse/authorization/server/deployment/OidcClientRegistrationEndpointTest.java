@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -22,6 +23,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import jakarta.inject.Inject;
 
@@ -30,11 +32,17 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import com.sun.net.httpserver.HttpServer;
+
 import io.quarkiverse.authorization.server.authorization.OAuth2Authorization;
 import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationService;
+import io.quarkiverse.authorization.server.client.RegisteredClient;
 import io.quarkiverse.authorization.server.client.RegisteredClientRepository;
+import io.quarkiverse.authorization.server.jose.jws.SignatureAlgorithm;
 import io.quarkiverse.authorization.server.model.AuthorizationGrantType;
+import io.quarkiverse.authorization.server.model.ClientAuthenticationMethod;
 import io.quarkiverse.authorization.server.runtime.client.BcryptClientSecretVerifier;
+import io.quarkiverse.authorization.server.settings.ClientSettings;
 import io.quarkiverse.authorization.server.token.OAuth2AccessToken;
 import io.quarkiverse.authorization.server.token.OAuth2RefreshToken;
 import io.quarkiverse.authorization.server.token.OAuth2TokenType;
@@ -158,9 +166,9 @@ class OidcClientRegistrationEndpointTest {
     @ValueSource(strings = { "private_key_jwt", "client_secret_jwt" })
     void registersJwtClientAndUsesReturnedMetadataForActualAuthentication(String method) throws Exception {
         String jwks = "private_key_jwt".equals(method)
-                ? ",\"jwks_uri\":\"http://localhost:8081/api/oauth2/jwks\""
+                ? ",\"jwks_uri\":\"https://localhost:8444/api/oauth2/jwks\""
                 : "";
-        // This fixture's explicit registration policy permits its local HTTP JWKS. Production defaults require HTTPS.
+        // This fixture explicitly permits its local HTTPS origin and trusts only the test CA.
         var registration = register(initial(Set.of("client.create")), """
                 {"redirect_uris":["https://rp.example/callback"],"grant_types":["client_credentials"],
                  "scope":"message.read","token_endpoint_auth_method":"%s"%s}
@@ -190,6 +198,57 @@ class OidcClientRegistrationEndpointTest {
                 .body("token_endpoint_auth_method", equalTo(method))
                 .body("token_endpoint_auth_signing_alg", equalTo(registration.path("token_endpoint_auth_signing_alg")))
                 .body("$", not(hasKey("client_secret")));
+    }
+
+    @Test
+    void customRegistrationValidatorCannotAllowHttpOrUnapprovedPrivateJwks() {
+        for (String method : List.of("private_key_jwt", "self_signed_tls_client_auth")) {
+            for (String url : List.of("http://127.0.0.1:12345/keys", "http://client.example/keys",
+                    "https://127.0.0.1:12345/keys", "https://localhost:12345/keys", "https://[::1]/keys",
+                    "https://169.254.169.254/keys", "https://10.0.0.1/keys", "https://[fd00::1]/keys")) {
+                register(initial(Set.of("client.create")), """
+                        {"redirect_uris":["https://rp.example/callback"],"token_endpoint_auth_method":"%s",
+                         "jwks_uri":"%s"}
+                        """.formatted(method, url)).then().statusCode(400)
+                        .body("error", equalTo("invalid_client_metadata"))
+                        .body("error_description", containsString("jwks_uri"));
+            }
+        }
+    }
+
+    @Test
+    void repositorySuppliedHttpJwksNeverReceivesTheInvalidAssertionRequest() throws Exception {
+        var requests = new AtomicInteger();
+        var target = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        target.createContext("/jwks", exchange -> {
+            requests.incrementAndGet();
+            byte[] body = "{\"keys\":[]}".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, body.length);
+            try (var output = exchange.getResponseBody()) {
+                output.write(body);
+            }
+        });
+        target.start();
+        try {
+            String id = UUID.randomUUID().toString();
+            this.clients.save(RegisteredClient.withId(id).clientId(id)
+                    .clientAuthenticationMethod(ClientAuthenticationMethod.PRIVATE_KEY_JWT)
+                    .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                    .clientSettings(ClientSettings.builder()
+                            .jwkSetUrl("http://127.0.0.1:" + target.getAddress().getPort() + "/jwks")
+                            .tokenEndpointAuthenticationSigningAlgorithm(SignatureAlgorithm.RS256)
+                            .build())
+                    .build());
+            given().contentType(ContentType.URLENC).formParam("client_id", id)
+                    .formParam("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
+                    .formParam("client_assertion",
+                            ClientAssertionTestSupport.assertion(id, null, "https://issuer.example/api", "wrong-key"))
+                    .formParam("grant_type", "client_credentials").post("/oauth2/token").then().statusCode(401)
+                    .body("error", equalTo("invalid_client"));
+            assertEquals(0, requests.get());
+        } finally {
+            target.stop(0);
+        }
     }
 
     @Test

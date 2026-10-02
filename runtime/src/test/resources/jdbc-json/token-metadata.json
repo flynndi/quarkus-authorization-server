@@ -1,0 +1,14 @@
+{
+  "kind": "token-metadata",
+  "data": {
+    "invalidated": false,
+    "claims": {
+      "sub": "alice",
+      "nbf": {"type": "instant", "value": "2999-01-01T00:00:00.123456789Z"},
+      "auth_time": {"type": "long", "value": "1893456000"},
+      "aud": {"type": "list", "value": ["api"]}
+    },
+    "tokenFormat": "self-contained",
+    "extensions": {}
+  }
+}

@@ -8,7 +8,6 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
@@ -16,19 +15,12 @@ import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-
 import io.quarkiverse.authorization.server.client.RegisteredClient;
 import io.quarkiverse.authorization.server.client.RegisteredClientRepository;
 import io.quarkiverse.authorization.server.model.AuthorizationGrantType;
 import io.quarkiverse.authorization.server.model.ClientAuthenticationMethod;
-import io.quarkiverse.authorization.server.runtime.jackson2.OAuth2AuthorizationServerJackson2Module;
 import io.quarkiverse.authorization.server.runtime.jdbc.JdbcTransactionSupport;
 import io.quarkiverse.authorization.server.runtime.util.Arguments;
-import io.quarkiverse.authorization.server.settings.ClientSettings;
-import io.quarkiverse.authorization.server.settings.TokenSettings;
 
 /**
  * JDBC implementation of {@link RegisteredClientRepository} using an application-provided {@link DataSource}.
@@ -52,16 +44,15 @@ public final class JdbcRegisteredClientRepository implements RegisteredClientRep
             + "client_settings = ?, token_settings = ? WHERE id = ?";
 
     private final DataSource dataSource;
-    private ObjectMapper objectMapper = new ObjectMapper();
+    private final JdbcJsonCodec jsonCodec;
 
     public JdbcRegisteredClientRepository(DataSource dataSource) {
-        this.dataSource = Objects.requireNonNull(dataSource, "dataSource cannot be null");
-        this.objectMapper.registerModule(new JavaTimeModule());
-        this.objectMapper.registerModule(new OAuth2AuthorizationServerJackson2Module());
+        this(dataSource, new JdbcJsonCodec());
     }
 
-    public final void setObjectMapper(ObjectMapper objectMapper) {
-        this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper cannot be null");
+    public JdbcRegisteredClientRepository(DataSource dataSource, JdbcJsonCodec jsonCodec) {
+        this.dataSource = Objects.requireNonNull(dataSource, "dataSource cannot be null");
+        this.jsonCodec = Objects.requireNonNull(jsonCodec, "jsonCodec cannot be null");
     }
 
     @Override
@@ -108,8 +99,8 @@ public final class JdbcRegisteredClientRepository implements RegisteredClientRep
             statement.setString(9, join(registeredClient.getRedirectUris(), Function.identity()));
             statement.setString(10, join(registeredClient.getPostLogoutRedirectUris(), Function.identity()));
             statement.setString(11, join(registeredClient.getScopes(), Function.identity()));
-            statement.setString(12, writeMap(registeredClient.getClientSettings().getSettings()));
-            statement.setString(13, writeMap(registeredClient.getTokenSettings().getSettings()));
+            statement.setString(12, this.jsonCodec.writeClientSettings(registeredClient.getClientSettings()));
+            statement.setString(13, this.jsonCodec.writeTokenSettings(registeredClient.getTokenSettings()));
             statement.executeUpdate();
         }
     }
@@ -142,8 +133,8 @@ public final class JdbcRegisteredClientRepository implements RegisteredClientRep
             statement.setString(6, join(registeredClient.getRedirectUris(), Function.identity()));
             statement.setString(7, join(registeredClient.getPostLogoutRedirectUris(), Function.identity()));
             statement.setString(8, join(registeredClient.getScopes(), Function.identity()));
-            statement.setString(9, writeMap(registeredClient.getClientSettings().getSettings()));
-            statement.setString(10, writeMap(registeredClient.getTokenSettings().getSettings()));
+            statement.setString(9, this.jsonCodec.writeClientSettings(registeredClient.getClientSettings()));
+            statement.setString(10, this.jsonCodec.writeTokenSettings(registeredClient.getTokenSettings()));
             statement.setString(11, registeredClient.getId());
             statement.executeUpdate();
         }
@@ -180,34 +171,9 @@ public final class JdbcRegisteredClientRepository implements RegisteredClientRep
         split(resultSet.getString("redirect_uris")).forEach(builder::redirectUri);
         split(resultSet.getString("post_logout_redirect_uris")).forEach(builder::postLogoutRedirectUri);
         split(resultSet.getString("scopes")).forEach(builder::scope);
-        Map<String, Object> clientSettings = parseMap(resultSet.getString("client_settings"));
-        if (!clientSettings.isEmpty()) {
-            builder.clientSettings(ClientSettings.builder()
-                    .settings(settings -> settings.putAll(clientSettings))
-                    .build());
-        }
-        Map<String, Object> tokenSettings = parseMap(resultSet.getString("token_settings"));
-        builder.tokenSettings(TokenSettings.builder()
-                .settings(settings -> settings.putAll(tokenSettings))
-                .build());
+        builder.clientSettings(this.jsonCodec.readClientSettings(resultSet.getString("client_settings")));
+        builder.tokenSettings(this.jsonCodec.readTokenSettings(resultSet.getString("token_settings")));
         return builder.build();
-    }
-
-    private Map<String, Object> parseMap(String data) {
-        try {
-            return this.objectMapper.readValue(data, new TypeReference<>() {
-            });
-        } catch (Exception exception) {
-            throw new IllegalArgumentException(exception.getMessage(), exception);
-        }
-    }
-
-    private String writeMap(Map<String, Object> data) {
-        try {
-            return this.objectMapper.writeValueAsString(data);
-        } catch (Exception exception) {
-            throw new IllegalArgumentException(exception.getMessage(), exception);
-        }
     }
 
     private <T> T withConnection(SqlFunction<Connection, T> work, String operation) {

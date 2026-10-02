@@ -1,0 +1,13 @@
+{
+  "kind": "token-settings",
+  "data": {
+    "authorizationCodeTimeToLive": "PT5M",
+    "accessTokenTimeToLive": "PT5M",
+    "accessTokenFormat": "self-contained",
+    "deviceCodeTimeToLive": "PT5M",
+    "reuseRefreshTokens": true,
+    "refreshTokenTimeToLive": "PT1H",
+    "idTokenSignatureAlgorithm": "RS256",
+    "extensions": {}
+  }
+}

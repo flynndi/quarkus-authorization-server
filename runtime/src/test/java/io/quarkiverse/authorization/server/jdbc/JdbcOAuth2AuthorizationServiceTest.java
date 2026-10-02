@@ -201,7 +201,7 @@ class JdbcOAuth2AuthorizationServiceTest {
     }
 
     @Test
-    void normalizesDecoratedIdentityThroughTheQuarkusCopyBuilder() throws Exception {
+    void persistsDecoratedIdentityThroughTheSecurityIdentityContract() throws Exception {
         SecurityIdentity original = QuarkusSecurityIdentity.builder()
                 .setPrincipal(() -> "resource-owner")
                 .addRole("reader")
@@ -259,12 +259,13 @@ class JdbcOAuth2AuthorizationServiceTest {
                 assertTrue(result.next());
                 json = result.getString(1);
             }
-            assertTrue(json.contains(QuarkusSecurityIdentity.class.getName()));
+            assertFalse(json.contains(QuarkusSecurityIdentity.class.getName()));
+            assertFalse(json.contains("@class"));
             assertFalse(json.contains("credentials"));
             ObjectNode data = (ObjectNode) new ObjectMapper().readTree(json);
-            ObjectNode identity = (ObjectNode) data.get(SecurityIdentity.class.getName());
-            assertEquals("resource-owner", identity.get("principal").asText());
-            identity.put("principal", "different-user");
+            ObjectNode identity = (ObjectNode) data.path("data").path("identity");
+            assertEquals("resource-owner", identity.get("principalName").asText());
+            identity.put("principalName", "different-user");
             try (PreparedStatement update = connection.prepareStatement(
                     "UPDATE oauth2_authorization SET attributes = ? WHERE id = ?")) {
                 update.setString(1, data.toString());
@@ -645,19 +646,38 @@ class JdbcOAuth2AuthorizationServiceTest {
     }
 
     @Test
-    void replacesObjectMapper() {
-        this.authorizationService.setObjectMapper(JdbcTestSupport.objectMapper());
-        OAuth2Authorization authorization = authorization(
-                "custom-mapper-authorization",
-                "custom-mapper-access-token",
-                "custom-mapper-refresh-token");
+    void persistsCustomValuesWithAnExplicitCodecAcrossRepositoryInstances() {
+        JdbcRegisteredClientRepository clients = new JdbcRegisteredClientRepository(this.dataSource);
+        JdbcOAuth2AuthorizationService writer = new JdbcOAuth2AuthorizationService(this.dataSource, clients,
+                JdbcTestSupport.jsonCodec());
+        OAuth2Authorization authorization = OAuth2Authorization
+                .from(authorization("custom-codec", "custom-access", "custom-refresh"))
+                .attribute("custom", new JdbcTestSupport.CustomValue("custom-data"))
+                .build();
+        writer.save(authorization);
+        JdbcOAuth2AuthorizationService reader = new JdbcOAuth2AuthorizationService(this.dataSource, clients,
+                JdbcTestSupport.jsonCodec());
+        assertAuthorizationDataEquals(authorization, reader.findById(authorization.getId()));
+        assertThrows(IllegalArgumentException.class, () -> this.authorizationService.findById(authorization.getId()));
+        assertThrows(NullPointerException.class, () -> new JdbcOAuth2AuthorizationService(this.dataSource, clients, null));
+    }
 
+    @Test
+    void futureNotBeforeRemainsInactiveAfterJdbcReplay() {
+        Instant now = Instant.now();
+        OAuth2AccessToken token = new OAuth2AccessToken(OAuth2AccessToken.TokenType.BEARER, "future-access", now,
+                now.plusSeconds(3600), Set.of("read"));
+        OAuth2Authorization authorization = OAuth2Authorization.withRegisteredClient(this.registeredClient)
+                .principalName("resource-owner").authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .token(token, metadata -> metadata.put(OAuth2Authorization.Token.CLAIMS_METADATA_NAME,
+                        Map.of("sub", "resource-owner", "nbf", now.plusSeconds(600))))
+                .build();
         this.authorizationService.save(authorization);
-
-        assertAuthorizationDataEquals(
-                authorization, this.authorizationService.findById(authorization.getId()));
-        assertThrows(
-                NullPointerException.class, () -> this.authorizationService.setObjectMapper(null));
+        var reader = new JdbcOAuth2AuthorizationService(this.dataSource, new JdbcRegisteredClientRepository(this.dataSource));
+        var restored = reader.findById(authorization.getId()).getAccessToken();
+        assertFalse(restored.isExpired());
+        assertTrue(restored.isBeforeUse());
+        assertFalse(restored.isActive());
     }
 
     @Test

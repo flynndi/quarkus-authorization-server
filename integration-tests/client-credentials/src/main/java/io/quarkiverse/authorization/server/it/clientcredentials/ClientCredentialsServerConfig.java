@@ -16,6 +16,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationService;
 import io.quarkiverse.authorization.server.client.RegisteredClient;
 import io.quarkiverse.authorization.server.client.RegisteredClientRepository;
+import io.quarkiverse.authorization.server.jdbc.JdbcJsonCodec;
 import io.quarkiverse.authorization.server.jdbc.JdbcOAuth2AuthorizationService;
 import io.quarkiverse.authorization.server.jdbc.JdbcRegisteredClientRepository;
 import io.quarkiverse.authorization.server.jose.jws.MacAlgorithm;
@@ -34,14 +35,15 @@ public class ClientCredentialsServerConfig {
 
     @Produces
     @Singleton
-    RegisteredClientRepository clients(DataSource dataSource) {
-        return new JdbcRegisteredClientRepository(dataSource);
+    RegisteredClientRepository clients(DataSource dataSource, JdbcJsonCodec jsonCodec) {
+        return new JdbcRegisteredClientRepository(dataSource, jsonCodec);
     }
 
     @Produces
     @Singleton
-    OAuth2AuthorizationService authorizations(DataSource dataSource, RegisteredClientRepository clients) {
-        return new JdbcOAuth2AuthorizationService(dataSource, clients);
+    OAuth2AuthorizationService authorizations(DataSource dataSource, RegisteredClientRepository clients,
+            JdbcJsonCodec jsonCodec) {
+        return new JdbcOAuth2AuthorizationService(dataSource, clients, jsonCodec);
     }
 
     void initialize(@Observes @Priority(100) StartupEvent event, DataSource dataSource,

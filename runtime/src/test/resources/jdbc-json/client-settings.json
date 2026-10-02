@@ -1,0 +1,11 @@
+{
+  "kind": "client-settings",
+  "data": {
+    "requireProofKey": true,
+    "requireAuthorizationConsent": false,
+    "jwkSetUrl": "https://client.example/jwks",
+    "tokenEndpointAuthenticationSigningAlgorithm": "RS256",
+    "x509CertificateSubjectDn": "CN=client",
+    "extensions": {}
+  }
+}

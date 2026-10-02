@@ -1,4 +1,4 @@
-package io.quarkiverse.authorization.server.runtime.jackson2;
+package io.quarkiverse.authorization.server.jdbc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -9,8 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.security.Permission;
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -19,13 +17,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.exc.InvalidTypeIdException;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import io.quarkiverse.authorization.server.runtime.grant.tokenexchange.token.OAuth2TokenExchangeTokenCustomizers;
 import io.quarkus.security.StringPermission;
@@ -35,13 +29,12 @@ import io.quarkus.security.runtime.QuarkusPrincipal;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.mutiny.Uni;
 
-class QuarkusSecurityIdentityJacksonTest {
+class JdbcJsonIdentityTest {
 
     private static final String IDENTITY = SecurityIdentity.class.getName();
     private static final String ACTORS = OAuth2TokenExchangeTokenCustomizers.ACTORS_ATTRIBUTE;
-    private final ObjectMapper mapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule())
-            .registerModule(new OAuth2AuthorizationServerJackson2Module());
+    private final ObjectMapper mapper = new ObjectMapper();
+    private final JdbcJsonCodec codec = new JdbcJsonCodec();
 
     @Test
     void restoresQuarkusIdentityWithoutCredentialsRequestStateOrPermissionCheckers()
@@ -128,49 +121,43 @@ class QuarkusSecurityIdentityJacksonTest {
     })
     void rejectsMalformedOrRuntimeOnlyIdentityProperties(String mutation) throws Exception {
         ObjectNode root = (ObjectNode) this.mapper.readTree(write(identity()));
-        ObjectNode data = (ObjectNode) root.get(IDENTITY);
+        ObjectNode data = (ObjectNode) root.path("data").path("identity");
         switch (mutation) {
-            case "missing-principal" -> data.remove("principal");
-            case "blank-principal" -> data.put("principal", " ");
-            case "null-principal" -> data.putNull("principal");
-            case "number-principal" -> data.put("principal", 123);
+            case "missing-principal" -> data.remove("principalName");
+            case "blank-principal" -> data.put("principalName", " ");
+            case "null-principal" -> data.putNull("principalName");
+            case "number-principal" -> data.put("principalName", 123);
             case "principal-object" ->
-                data.putObject("principal").put("@class", "java.lang.Runtime");
-            case "number-role" -> ((ArrayNode) data.get("roles").get(1)).removeAll().add(5);
-            case "boolean-role" -> ((ArrayNode) data.get("roles").get(1)).removeAll().add(true);
-            case "null-role" -> ((ArrayNode) data.get("roles").get(1)).removeAll().addNull();
+                data.putObject("principalName").put("@class", "java.lang.Runtime");
+            case "number-role" -> ((ArrayNode) data.get("roles")).removeAll().add(5);
+            case "boolean-role" -> ((ArrayNode) data.get("roles")).removeAll().add(true);
+            case "null-role" -> ((ArrayNode) data.get("roles")).removeAll().addNull();
             case "null-roles" -> data.putNull("roles");
             case "credentials" -> data.put("credentials", "secret");
             case "permissions" -> data.put("permissions", "admin");
             case "anonymous" -> data.put("anonymous", false);
             case "role", "permissionAsString" -> data.put(mutation, "admin");
-            case "null-actors" -> ((ObjectNode) data.get("attributes")).putNull(ACTORS);
-            case "nonlist-actors" -> ((ObjectNode) data.get("attributes")).put(ACTORS, "actor");
+            case "null-actors" -> data.putNull("actors");
+            case "nonlist-actors" -> data.put("actors", "actor");
             case "unknown-attribute" ->
-                ((ObjectNode) data.get("attributes")).put("request-only", "value");
+                data.put("request-only", "value");
             default -> {
                 Map<String, Object> actor = switch (mutation) {
                     case "missing-actor-sub" -> Map.of("iss", "issuer");
                     case "blank-actor-sub" -> Map.of("sub", " ");
                     default -> Map.of("sub", "actor", "iss", 5);
                 };
-                data.set(
-                        "attributes",
-                        this.mapper.valueToTree(
-                                new LinkedHashMap<>(Map.of(ACTORS, List.of(actor)))));
+                data.set("actors", this.mapper.valueToTree(List.of(actor)));
             }
         }
-        assertThrows(JsonMappingException.class, () -> read(root.toString()));
+        assertThrows(IllegalArgumentException.class, () -> read(root.toString()));
     }
 
     @Test
-    void onlyAllowsTheExactQuarkusIdentityType() throws Exception {
+    void neverAcceptsClassNamesAsIdentityMetadata() throws Exception {
         ObjectNode root = (ObjectNode) this.mapper.readTree(write(identity()));
-        ((ObjectNode) root.get(IDENTITY)).put("@class", UnapprovedIdentity.class.getName());
-        assertThrows(InvalidTypeIdException.class, () -> read(root.toString()));
-        ((ObjectNode) root.get(IDENTITY))
-                .put("@class", SecurityIdentityJacksonBuilder.class.getName());
-        assertThrows(InvalidTypeIdException.class, () -> read(root.toString()));
+        ((ObjectNode) root.path("data").path("identity")).put("@class", "java.lang.Runtime");
+        assertThrows(IllegalArgumentException.class, () -> read(root.toString()));
     }
 
     @Test
@@ -184,15 +171,12 @@ class QuarkusSecurityIdentityJacksonTest {
                         .contains("@class"));
     }
 
-    private String write(SecurityIdentity identity) throws Exception {
-        return this.mapper.writeValueAsString(
-                Collections.unmodifiableMap(new LinkedHashMap<>(Map.of(IDENTITY, identity))));
+    private String write(SecurityIdentity identity) {
+        return this.codec.writeAuthorizationAttributes("alice", Map.of(IDENTITY, identity));
     }
 
-    private SecurityIdentity read(String json) throws Exception {
-        Map<String, Object> attributes = this.mapper.readValue(json, new TypeReference<>() {
-        });
-        return (SecurityIdentity) attributes.get(IDENTITY);
+    private SecurityIdentity read(String json) {
+        return (SecurityIdentity) this.codec.readAuthorizationAttributes("alice", json).get(IDENTITY);
     }
 
     private static SecurityIdentity identity() {
@@ -202,7 +186,4 @@ class QuarkusSecurityIdentityJacksonTest {
                 .build();
     }
 
-    // Loadable, but excluded by the exact identity type allow-list.
-    private abstract static class UnapprovedIdentity implements SecurityIdentity {
-    }
 }

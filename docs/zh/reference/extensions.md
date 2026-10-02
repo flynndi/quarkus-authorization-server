@@ -36,6 +36,8 @@
 
 JDBC producer、schema 和事务边界见[存储与签名密钥](/zh/guide/storage-and-keys)。返回不同 Bean 对象本身不隔离共享数据库中的记录。
 
+默认 [`JdbcJsonCodec`](https://github.com/flynndi/quarkus-authorization-server/blob/main/runtime/src/main/java/io/quarkiverse/authorization/server/jdbc/JdbcJsonCodec.java) 同样使用单值 `@DefaultBean`，并收集 [`JdbcJsonValueAdapter<?>`](https://github.com/flynndi/quarkus-authorization-server/blob/main/runtime/src/main/java/io/quarkiverse/authorization/server/jdbc/JdbcJsonValueAdapter.java) 中带 `@Default` qualifier 的 Bean 处理自定义持久化值；带自定义 qualifier 的 Bean 按上面的组合规则排除。adapter 按稳定类型 ID 和精确 Java 类型选择，不依赖优先级；重复注册会在创建 codec 时失败。将注入的 codec 传给两个 JDBC 仓储，才会使用这些 adapter；它们不会改变应用的 HTTP JSON mapper。
+
 ## 单值协议策略 {#single-components}
 
 <div class="reference-table" role="region" aria-label="协议 SPI 表，可按需横向滚动" tabindex="0">

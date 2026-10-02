@@ -36,6 +36,8 @@ Each row is a single-value replacement. The default repositories are process-loc
 
 For JDBC producers, schema and transaction boundaries, use [Storage and signing keys](/guide/storage-and-keys). Returning different bean objects does not itself isolate shared database rows.
 
+The default [`JdbcJsonCodec`](https://github.com/flynndi/quarkus-authorization-server/blob/main/runtime/src/main/java/io/quarkiverse/authorization/server/jdbc/JdbcJsonCodec.java) is also a single-value `@DefaultBean`. It collects [`JdbcJsonValueAdapter<?>`](https://github.com/flynndi/quarkus-authorization-server/blob/main/runtime/src/main/java/io/quarkiverse/authorization/server/jdbc/JdbcJsonValueAdapter.java) beans with the `@Default` qualifier for custom persistent values. Beans with custom qualifiers are excluded, following the composition rules above. Adapters are selected by stable type ID and exact Java type, not by priority; duplicate registrations fail when the codec is created. Pass the injected codec into the two JDBC repositories to use these adapters. This does not customize the application's HTTP JSON mapper.
+
 ## Single-value protocol policies {#single-components}
 
 <div class="reference-table" role="region" aria-label="Protocol SPI table; scroll horizontally if needed" tabindex="0">

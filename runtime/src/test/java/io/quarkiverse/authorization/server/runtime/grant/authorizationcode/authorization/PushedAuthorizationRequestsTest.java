@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.Set;
 
+import org.h2.jdbcx.JdbcDataSource;
 import org.junit.jupiter.api.Test;
 
 import io.quarkiverse.authorization.server.authorization.InMemoryOAuth2AuthorizationService;
@@ -13,7 +14,10 @@ import io.quarkiverse.authorization.server.authorization.OAuth2Authorization;
 import io.quarkiverse.authorization.server.client.RegisteredClient;
 import io.quarkiverse.authorization.server.endpoint.OAuth2AuthorizationRequest;
 import io.quarkiverse.authorization.server.grant.authorizationcode.AuthorizationRequest;
+import io.quarkiverse.authorization.server.jdbc.JdbcOAuth2AuthorizationService;
+import io.quarkiverse.authorization.server.jdbc.JdbcRegisteredClientRepository;
 import io.quarkiverse.authorization.server.model.AuthorizationGrantType;
+import io.quarkiverse.authorization.server.runtime.jdbc.JdbcTestSupport;
 import io.quarkiverse.authorization.server.token.OAuth2TokenType;
 import io.quarkus.security.runtime.QuarkusPrincipal;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
@@ -24,6 +28,27 @@ class PushedAuthorizationRequestsTest {
     private final RegisteredClient client = RegisteredClient.withId("id").clientId("client")
             .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE).redirectUri("https://client.example/callback")
             .build();
+
+    @Test
+    void jdbcReplayPreservesTheRequestAndEnforcesItsExpiry() {
+        JdbcDataSource dataSource = new JdbcDataSource();
+        dataSource.setURL("jdbc:h2:mem:" + java.util.UUID.randomUUID() + ";DB_CLOSE_DELAY=-1");
+        JdbcTestSupport.executeSchema(dataSource, JdbcRegisteredClientRepository.SCHEMA_LOCATION);
+        JdbcTestSupport.executeSchema(dataSource, JdbcOAuth2AuthorizationService.SCHEMA_LOCATION);
+        var clients = new JdbcRegisteredClientRepository(dataSource);
+        clients.save(this.client);
+        var writer = new PushedAuthorizationRequests(new JdbcOAuth2AuthorizationService(dataSource, clients));
+        var response = writer.save(PushedAuthorizationRequestsTest.request("client", Map.of("nonce", "n")), this.client);
+        var repository = new JdbcOAuth2AuthorizationService(dataSource, new JdbcRegisteredClientRepository(dataSource));
+        var reader = new PushedAuthorizationRequests(repository);
+        var reference = PushedAuthorizationRequestsTest.reference("client", response.requestUri());
+        var restored = reader.resolve(reference);
+        assertEquals("n", restored.request().getAdditionalParameters().get("nonce"));
+        repository.save(OAuth2Authorization.from(restored.authorization())
+                .attribute(OAuth2AuthorizationRequest.PUSHED_REQUEST_EXPIRES_AT_ATTRIBUTE_NAME, Instant.EPOCH).build());
+        assertThrows(AuthorizationRequestException.class, () -> reader.resolve(reference));
+        assertNull(repository.findById(restored.authorization().getId()));
+    }
 
     @Test
     void referenceRestoresParametersButKeepsTheCurrentBrowserIdentityAndEndpoint() {
@@ -55,7 +80,7 @@ class PushedAuthorizationRequestsTest {
         assertNull(crossClient.getRedirect());
         assertNotNull(this.authorizations.findById(resolved.authorization().getId()));
         this.authorizations.save(OAuth2Authorization.from(resolved.authorization())
-                .attribute(PushedAuthorizationRequests.EXPIRES_AT_ATTRIBUTE, Instant.EPOCH).build());
+                .attribute(OAuth2AuthorizationRequest.PUSHED_REQUEST_EXPIRES_AT_ATTRIBUTE_NAME, Instant.EPOCH).build());
         assertNull(assertThrows(AuthorizationRequestException.class, () -> this.pushed.resolve(reference)).getRedirect());
         assertNull(this.authorizations.findById(resolved.authorization().getId()));
         for (String uri : new String[] { "https://attacker.example/request", "urn:ietf:params:oauth:request_uri:",

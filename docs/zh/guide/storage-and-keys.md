@@ -22,6 +22,7 @@ import javax.sql.DataSource;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 import io.quarkiverse.authorization.server.jdbc.JdbcRegisteredClientRepository;
+import io.quarkiverse.authorization.server.jdbc.JdbcJsonCodec;
 import io.quarkiverse.authorization.server.client.RegisteredClientRepository;
 import io.quarkiverse.authorization.server.jdbc.JdbcOAuth2AuthorizationService;
 import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationService;
@@ -32,14 +33,14 @@ import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationCons
 public class AuthorizationStorage {
     @Produces
     @Singleton
-    RegisteredClientRepository clients(DataSource dataSource) {
-        return new JdbcRegisteredClientRepository(dataSource);
+    RegisteredClientRepository clients(DataSource dataSource, JdbcJsonCodec jsonCodec) {
+        return new JdbcRegisteredClientRepository(dataSource, jsonCodec);
     }
 
     @Produces
     @Singleton
-    OAuth2AuthorizationService authorizations(DataSource dataSource, RegisteredClientRepository clients) {
-        return new JdbcOAuth2AuthorizationService(dataSource, clients);
+    OAuth2AuthorizationService authorizations(DataSource dataSource, RegisteredClientRepository clients, JdbcJsonCodec jsonCodec) {
+        return new JdbcOAuth2AuthorizationService(dataSource, clients, jsonCodec);
     }
 
     @Produces
@@ -63,6 +64,35 @@ public class AuthorizationStorage {
 示例自行初始化内嵌 H2，启动时建表的辅助代码仅供演示，不是生产迁移服务。上面的 PostgreSQL 配置说明数据源接入方式，不代表已经完成 PostgreSQL 迁移验收。
 
 源码：[`AuthorizationServerPersistence`](https://github.com/flynndi/quarkus-authorization-server/blob/main/examples/authorization-code/src/main/java/io/quarkiverse/authorization/server/example/authorizationcode/authorizationserver/config/AuthorizationServerPersistence.java)。
+
+## JDBC JSON codec
+
+`JdbcOAuth2AuthorizationService` 和 `JdbcRegisteredClientRepository` 使用 `JdbcJsonCodec` 编解码授权 attributes、token metadata、client settings 和 token settings。SQL 列和事务边界不变；codec 替代原先携带 Java 类型信息的 Jackson 模块及其领域对象、集合反射注册。
+
+codec 使用独立 mapper，显式读写 JSON tree。文档包含表示列用途的 `kind` 和数据 `data`，不增加 `formatVersion`，也不与项目发布版本绑定。例如：
+
+```json
+{
+  "kind": "token-metadata",
+  "data": {
+    "invalidated": false,
+    "claims": {
+      "nbf": { "type": "instant", "value": "2030-01-01T00:00:00Z" }
+    },
+    "extensions": {}
+  }
+}
+```
+
+已知字段采用 `identity`、`authorizationRequest`、`session`、`tokenFormat` 等稳定名称，由 codec 在持久化边界转换运行时属性 key。身份仅保存用户名、角色和经过校验的 actor claims；读取后重建 Quarkus `SecurityIdentity`，不恢复 credentials、请求属性或 permission checker。
+
+扩展值支持字符串、布尔值、null、标准数值包装类型、`BigInteger`、`BigDecimal`、`Instant`、`Duration`、字符串 key 的 Map、List、Set 和内置协议值类型。需要恢复类型的值使用逻辑 `type/value` 包装，数值载荷使用文本保留精度、小数位数和数值类型。Map 也有明确的包装，因此业务数据中的 `type/value` 字段不会被误识别为编解码标记。集合按不可变接口恢复，不保存原 Java 实现类。已知 settings 字段直接使用布尔值和字符串，缺省配置由领域默认值补齐。
+
+扩展通过 `@Singleton` / `@DefaultBean` 提供默认 codec，并收集应用的 `@Default JdbcJsonValueAdapter<?>` CDI Bean；按上面的示例把注入的 codec 传给两个仓储。纯 Java 场景仍可使用原有构造器获得默认 codec，自定义类型则显式传入 `new JdbcJsonCodec(adapters)`。应用 producer 可以覆盖默认装配，不再提供 `setObjectMapper()` 入口，也不修改应用的全局 Jackson 配置。带 `@Identifier` 等自定义 qualifier 的 Bean 留给应用显式装配，不进入默认 codec。adapter ID 使用 `custom:` 前缀，重复 ID/Java 类型及覆盖内置类型的注册会被拒绝。adapter 只能返回普通 JSON tree，不能返回 Jackson POJO node。未知类型、非法协议字段、重复 JSON key 和过深嵌套都会明确失败。`nbf` 必须恢复为 `Instant`，保留 token 的未生效检查。
+
+codec 在返回编码结果前，使用读取端的同一个私有 mapper 解析最终 JSON，让数字、字符串和字段名长度等 Jackson 限制在持久化前生效；每份写入文档会增加一次 JSON 解析，不调用应用 adapter 的读取逻辑。
+
+codec 不读取原有携带 Java 类型信息的 JSON，接入本次改动时需重建可丢弃的开发数据；扩展不会自动迁移或删除现有记录。四类列的固定样本位于 [`runtime/src/test/resources/jdbc-json`](https://github.com/flynndi/quarkus-authorization-server/tree/main/runtime/src/test/resources/jdbc-json)。
 
 ## 理解事务边界
 

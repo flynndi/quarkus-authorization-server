@@ -113,7 +113,7 @@ class OidcClientRegistrationJdbcTest {
             try (var rows = statement.executeQuery()) {
                 assertTrue(rows.next());
                 assertFalse(rows.getString(1).contains(generated.getClientSecret()));
-                assertTrue(rows.getString(2).contains("require-proof-key"));
+                assertTrue(rows.getString(2).contains("requireProofKey"));
                 assertTrue(rows.getString(3).contains("ES256"));
             }
         }

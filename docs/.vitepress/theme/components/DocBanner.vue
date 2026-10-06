@@ -13,6 +13,7 @@ const blob = `${repo}/blob/${commitFull}`
 
 <template>
   <p class="doc-banner">
+    <span class="doc-banner__status">{{ zh ? '实验性 · 社区维护' : 'Experimental · Community-maintained' }}</span>
     <span class="doc-banner__pill">{{ version }}</span>
     <span>
       {{

@@ -32,6 +32,14 @@ npm run dev
 
 [`AuthorizationServerPersistence`](https://github.com/flynndi/quarkus-authorization-server/blob/main/examples/authorization-code/src/main/java/io/quarkiverse/authorization/server/example/authorizationcode/authorizationserver/config/AuthorizationServerPersistence.java) 注册这个客户端，显式要求 PKCE 和 consent。示例启用 OIDC，用于发现、UserInfo 和退出登录。
 
+## 客户端与资源服务器的职责 {#client-and-resource-server-roles}
+
+Vue 应用是 OIDC Relying Party（RP）。其中的 `oidc-client-ts` 发起 Authorization Code + PKCE，处理回调与返回的 ID Token，并维护客户端的用户状态。调用 API 时发送的是 **access token**。
+
+后端 `quarkus-oidc` 使用 `application-type=service` 验证 Bearer token，在本示例中不负责发起浏览器登录。本扩展提供 AS/OP 端点，Quarkus Form 在授权服务器上完成用户认证。
+
+Quarkus 服务端客户端也可以使用上游 [`quarkus-oidc` 的 web-app 模式](https://quarkus.io/guides/security-oidc-code-flow-authentication/)驱动 OIDC 登录。本 Vue 示例没有验证该独立集成路线。客户端登录与资源端 token 验证的区别见[引言](./index#oidc-roles)。
+
 ## 一次请求如何完成
 
 1. `oidc-client-ts` 生成 state 和 PKCE verifier，携带 S256 challenge 跳转到授权端点。

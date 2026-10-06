@@ -41,8 +41,8 @@ mavenPublishing {
     )
 
     pom {
-        name.set("Quarkus Authorization Server Deployment")
-        description.set("Quarkus extension deployment module for authorization server support.")
+        name.set("OAuth Server Extension for Quarkus - Deployment (Experimental)")
+        description.set("Build-time integration for the experimental, community-maintained OAuth Server Extension for Quarkus.")
         url.set("https://github.com/flynndi/quarkus-authorization-server")
         licenses {
             license {

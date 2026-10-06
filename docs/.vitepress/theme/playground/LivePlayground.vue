@@ -243,7 +243,7 @@ onBeforeUnmount(() => { stop(); clearInterval(ticker); window.removeEventListene
   <main class="live-page">
     <header class="live-heading">
       <div>
-        <p class="live-eyebrow">OAUTH 2.0 · {{ t('LIVE SANDBOX', '在线演示') }}</p>
+        <p class="live-eyebrow">OAUTH 2.0 · {{ t('EXPERIMENTAL COMMUNITY DEMO', '实验性社区演示') }}</p>
         <h1>{{ t('From authorization to API.', '从授权到资源访问。') }}</h1>
         <p class="live-lead">{{ t('Choose a flow. Get a token. See what it can access.', '选择授权模式，获取 Token，查看它能访问哪些资源。') }}</p>
       </div>

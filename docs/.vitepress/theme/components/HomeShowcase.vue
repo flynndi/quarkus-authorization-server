@@ -39,12 +39,13 @@ onUnmounted(() => clearTimeout(resetCopy))
     <section class="qas-hero" aria-labelledby="home-title">
       <div class="qas-hero__intro">
         <p class="qas-eyebrow">
-          <span aria-hidden="true" />Quarkus Authorization Server
+          <span aria-hidden="true" />{{ copy.status }}
         </p>
         <h1 id="home-title">
           {{ copy.headline }}<br /><span>{{ copy.emphasis }}</span>
         </h1>
         <p class="qas-hero__lead">{{ copy.lead }}</p>
+        <p class="qas-hero__ownership">{{ copy.ownership }}</p>
         <div class="qas-hero__actions">
           <a class="qas-button" :href="copy.startHref">
             {{ copy.start }}<span aria-hidden="true">→</span>
@@ -98,62 +99,22 @@ onUnmounted(() => clearTimeout(resetCopy))
         <li>CDI</li>
         <li>HTTP Security</li>
         <li>Vert.x</li>
-        <li>quarkus-oidc</li>
+        <li>SecurityIdentity</li>
       </ul>
     </div>
 
-    <section class="qas-comparison" aria-labelledby="comparison-title">
+    <section class="qas-scope" aria-labelledby="scope-title">
       <div class="qas-explore__heading">
-        <h2 id="comparison-title">{{ copy.comparison.title }}</h2>
-        <p>{{ copy.comparison.lead }}</p>
+        <h2 id="scope-title">{{ copy.scope.title }}</h2>
+        <p>{{ copy.scope.lead }}</p>
       </div>
-
-      <table class="qas-comparison__table" aria-labelledby="comparison-title">
-        <thead>
-          <tr>
-            <th scope="col">{{ copy.comparison.dimension }}</th>
-            <th v-for="product in copy.comparison.products" :key="product.name" scope="col"
-              :class="{ 'qas-comparison__featured': product.featured }">
-              <span class="qas-comparison__name">{{ product.name }}</span>
-              <span class="qas-comparison__kind">{{ product.kind }}</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(label, index) in copy.comparison.labels" :key="label">
-            <th scope="row">{{ label }}</th>
-            <td v-for="product in copy.comparison.products" :key="product.name"
-              :class="{ 'qas-comparison__featured': product.featured }">
-              {{ product.details[index] }}
-            </td>
-          </tr>
-        </tbody>
-        <tfoot>
-          <tr>
-            <th scope="row">{{ copy.comparison.readMore }}</th>
-            <td v-for="product in copy.comparison.products" :key="product.name"
-              :class="{ 'qas-comparison__featured': product.featured }">
-              <a :href="product.href">{{ product.link }} <span aria-hidden="true">↗</span></a>
-            </td>
-          </tr>
-        </tfoot>
-      </table>
-
-      <div class="qas-comparison__cards">
-        <article v-for="product in copy.comparison.products" :key="product.name"
-          class="qas-comparison__card" :class="{ 'qas-comparison__featured': product.featured }">
-          <h3>{{ product.name }}</h3>
-          <p class="qas-comparison__kind">{{ product.kind }}</p>
-          <dl>
-            <div v-for="(label, index) in copy.comparison.labels" :key="label">
-              <dt>{{ label }}</dt>
-              <dd>{{ product.details[index] }}</dd>
-            </div>
-          </dl>
-          <a :href="product.href">{{ product.link }} <span aria-hidden="true">↗</span></a>
+      <div class="qas-scope__items">
+        <article v-for="item in copy.scope.items" :key="item.title">
+          <h3>{{ item.title }}</h3>
+          <p>{{ item.detail }}</p>
         </article>
       </div>
-      <p class="qas-comparison__note">{{ copy.comparison.note }}</p>
+      <a class="qas-scope__link" :href="copy.scope.href">{{ copy.scope.link }} <span aria-hidden="true">→</span></a>
     </section>
 
     <section class="qas-explore" aria-labelledby="explore-title">

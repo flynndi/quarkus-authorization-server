@@ -501,3 +501,17 @@ REF-02 已按用户要求提交并 push：`20d5609`（`docs: document protocol e
 - 24 项文档 Node 测试、VitePress production build 和 `git diff --check` 通过；Chrome 检查中英文首页、引言与快速开始，代码片段和版本占位符正确展开，1440 px 桌面及 390 px 手机宽度无页面横向溢出、资源加载错误或脚本错误。
 
 边界：本次只更新文档与共享片段，没有修改扩展实现、仓库示例或 Playground 后端；未做 native 验证或 Cloudflare 发布。本轮按用户要求提交并 push 到 `dev`，主分支由用户合并。
+
+### 2026-10-06：明确实验性扩展定位与维护边界
+
+根据 Quarkiverse 扩展提案的反馈，对外展示名称改为 `OAuth Server Extension for Quarkus`，中英文首页、README、引言与文档页顶部明确标注 Experimental / Community-maintained。首页移除 Spring Authorization Server / Keycloak 对比，改为说明目标团队、扩展能力和应用团队的维护职责；强调授权服务器作为独立服务运行。
+
+引言及 Authorization Code 指南区分 Client Credentials、用户授权访问 API 和 OIDC 登录，并说明当前 Vue 示例由 `oidc-client-ts` 承担 RP 职责、`quarkus-oidc` 验证资源端 Bearer token。文档说明 Quarkus `web-app` 的客户端角色，但不将其描述为本项目已经验证的集成。扩展描述符和 Maven POM 的展示名称、描述同步调整；仓库名、Maven 坐标、版本及配置前缀保持不变。
+
+检查记录：
+
+- 24 项文档 Node 测试、VitePress production build、`git diff --check` 通过。
+- runtime/deployment 的 Spotless 检查、POM 生成及 runtime 扩展元数据校验通过；生成产物中的坐标与版本未变，扩展状态为 `experimental`。
+- Chrome 检查中英文首页在 1440 / 768 / 390 px、深浅主题下的 12 种组合，以及中英文引言、Code 指南、协议参考、Playground、架构页的 10 项手机页面检查；未发现横向溢出、资源加载错误或脚本异常。检查复制请求、快速开始跳转及最终截图。
+
+边界：本轮只调整文档、页面呈现和发布元数据，没有修改协议实现或新增依赖；未执行 native 验证、演示后端全链路测试或 Cloudflare 发布，也未修改 GitHub Description。用户 review 后授权提交、push 到 `dev`；推送不代表主分支合并或网站发布完成。

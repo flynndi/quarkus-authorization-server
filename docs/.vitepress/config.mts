@@ -40,9 +40,9 @@ const searchZh = {
 }
 
 export default defineConfig({
-  title: 'Quarkus Authorization Server',
-  titleTemplate: ':title · Quarkus Authorization Server',
-  description: 'OAuth 2.0 and optional OpenID Connect authorization for Quarkus applications.',
+  title: 'OAuth Server Extension for Quarkus (Experimental)',
+  titleTemplate: ':title · OAuth Server Extension (Experimental)',
+  description: 'Experimental, community-maintained Quarkus extension for building OAuth 2.0 authorization servers with optional OpenID Connect.',
   lang: 'en-US',
   srcExclude: ['website-plan.md', 'diagrams/**'],
   cleanUrls: true,
@@ -58,7 +58,7 @@ export default defineConfig({
     ['meta', { name: 'theme-color', content: '#ffffff', media: '(prefers-color-scheme: light)' }],
     ['meta', { name: 'theme-color', content: '#111318', media: '(prefers-color-scheme: dark)' }],
     ['meta', { property: 'og:type', content: 'website' }],
-    ['meta', { property: 'og:site_name', content: 'Quarkus Authorization Server' }],
+    ['meta', { property: 'og:site_name', content: 'OAuth Server Extension for Quarkus (Experimental)' }],
     ...(isPreviewDeploy
       ? ([['meta', { name: 'robots', content: 'noindex, nofollow' }]] as const)
       : [])
@@ -98,8 +98,8 @@ export default defineConfig({
     ])
   },
   themeConfig: {
-    logo: { src: '/logo.svg', alt: 'Quarkus Authorization Server' },
-    siteTitle: 'Authorization Server',
+    logo: { src: '/logo.svg', alt: 'OAuth Server Extension for Quarkus' },
+    siteTitle: 'OAuth Server Extension',
     externalLinkIcon: true,
     search: {
       provider: 'local',
@@ -116,7 +116,7 @@ export default defineConfig({
       label: 'English',
       lang: 'en-US',
       description:
-        'A Quarkus extension that implements OAuth 2.0 and optional OpenID Connect authorization-server capabilities.',
+        'Experimental, community-maintained Quarkus extension for building OAuth 2.0 authorization servers with optional OpenID Connect.',
       themeConfig: {
         nav: [
           { text: 'Docs', link: '/guide/', activeMatch: '/guide/' },
@@ -189,7 +189,7 @@ export default defineConfig({
     zh: {
       label: '简体中文',
       lang: 'zh-CN',
-      description: 'Quarkus 扩展：OAuth 2.0 与可选 OpenID Connect 授权服务器。',
+      description: '社区维护的实验性 Quarkus 扩展，用于构建 OAuth 2.0 授权服务器，按需启用 OpenID Connect。',
       markdown: {
         container: {
           tipLabel: '提示',

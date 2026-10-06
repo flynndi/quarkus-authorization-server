@@ -1,22 +1,44 @@
 # 介绍
 
-Quarkus Authorization Server 是一个用于构建 OAuth 2.0 授权服务的 Quarkus 扩展，可按需启用 OpenID Connect。它面向**新建或已有的 Quarkus 系统：自行管理用户与认证，并需要授权其他应用访问自己的 API**。
+**实验性 · 社区维护**
+
+OAuth Server Extension for Quarkus 提供构建 OAuth 2.0 授权服务器的组件，可按需启用 OpenID Connect。项目由社区贡献者维护，不由 Quarkus 项目或团队提供和维护。开发与安全审查仍在持续进行。
+
+## 适合谁使用
+
+本扩展面向**有经验、选择自行构建并维护授权服务的团队**，适用于新建或已有系统。这些团队自行管理用户与认证，需要向客户端应用授权，并愿意承担协议行为评估、安全审查与服务运行的责任。
+
+应用如果只需要用户登录或 API 保护，应先考虑成熟的 OAuth/OIDC Provider 与 Quarkus Security。自行构建授权服务器需要另外承担开发与维护工作。
 
 例如，一个系统拥有自己的用户服务和消息 API，另一个应用希望在用户同意后读取消息。用户在授权服务器登录并同意授予 `message.read`，客户端应用取得 access token，再携带它调用消息 API。客户端无需获得用户密码、直接访问用户库或共享授权服务器的登录 Cookie。
 
 ## 登录、授权与 API 访问
 
-Quarkus Form 可以处理本应用的用户名密码登录。扩展利用这个登录结果确定用户身份，进一步提供客户端应用所需的 OAuth 端点、客户端认证、consent 和 token 签发。如果只需要本应用的登录，Form 认证本身就可能足够。
+示例中的 Quarkus Form 负责用户在授权服务器上的本地登录。扩展使用该身份处理授权请求、获取 consent 并签发 token。仅完成 Form 登录，并不会赋予另一个客户端应用调用 API 的权限。
 
-| 角色 | 职责 |
+| 场景 | 流程 | 客户端得到什么 |
+| --- | --- | --- |
+| 应用代表自己访问 API | Client Credentials | 代表客户端的 access token，无需用户登录 |
+| 应用经用户同意访问 API | Authorization Code | 用于已授权访问的 access token |
+| 用户通过 OpenID Provider 登录客户端应用 | 带 `openid` 的 OIDC Authorization Code | 描述用户认证结果的 ID Token，以及 access token |
+
+调用 API 使用 **access token**。**ID Token** 向 OIDC 客户端描述用户认证结果，不是资源 API 的访问凭据。
+
+## `quarkus-oidc` 承担什么职责 {#oidc-roles}
+
+本扩展实现授权服务器 / OpenID Provider（AS/OP）一侧。OAuth/OIDC 客户端与资源服务器各有职责：
+
+| 角色 | 当前示例中的实现 |
 | --- | --- |
-| 授权服务器 | 使用应用自己的用户认证，校验 OAuth 客户端及申请的访问范围，签发 token |
-| OAuth 客户端 | 引导用户登录和授权、处理回调、获取 access token，再调用 API |
-| 资源 API | 通过 `quarkus-oidc` 验证 access token，执行自己的访问规则 |
+| 授权服务器 / OpenID Provider | 本扩展处理协议端点与 token 签发；应用提供用户认证 |
+| OAuth/OIDC 客户端（OIDC 登录时为 RP） | 快速开始用浏览器和终端演示 OAuth；Vue 示例使用 `oidc-client-ts` 完成 OIDC Authorization Code + PKCE |
+| 资源 API | `quarkus-oidc` 的 `application-type=service` 验证 Bearer access token；API 执行自己的访问规则 |
 
-启用 OpenID Connect 后，客户端应用还可以将授权服务器作为 OpenID Provider，完成用户登录。扩展实现 AS/OP 一侧，客户端应用通过 OAuth/OIDC 客户端库接入。
+`quarkus-oidc` 还支持 `application-type=web-app`，此时它作为 OIDC 客户端驱动授权码登录，与 Bearer 验证是不同的职责。当前 Vue 示例由 `oidc-client-ts` 驱动登录，没有验证 Quarkus `web-app` 这条集成路线。参见 [Quarkus 授权码指南](https://quarkus.io/guides/security-oidc-code-flow-authentication/)与[示例角色说明](./authorization-code#client-and-resource-server-roles)。
 
-[快速开始](./getting-started)将授权服务器与资源 API 运行在**两个独立应用**中，通过 issuer discovery、公钥和 access token 建立信任关系。资源 API 不需要授权服务器扩展或用户密码库。扩展运行在承载它的 Quarkus 应用内部，既可以用于构建独立授权服务，也可以加入已有应用；协议角色仍然各有职责。
+授权服务器应用提供 AS/OP 端点不需要依赖 `quarkus-oidc`。资源 API 必须验证 token，本项目的 Quarkus 示例使用 `quarkus-oidc` 完成验证；协议也允许使用其他兼容库实现客户端与资源服务器。
+
+[快速开始](./getting-started)将授权服务器与资源 API 运行在**两个独立应用**中，通过 issuer discovery、公钥和 access token 建立信任关系。将授权服务器作为独立服务构建和运行；资源 API 不需要该扩展或用户密码库。扩展运行在承载授权服务的 Quarkus 应用内部。
 
 ## 应用需要提供什么
 

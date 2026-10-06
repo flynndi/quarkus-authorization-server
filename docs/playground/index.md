@@ -1,7 +1,7 @@
 ---
 layout: page
 title: OAuth Playground
-description: Try Authorization Code + PKCE, Client Credentials, Password and Device Authorization against the Quarkus demo server.
+description: An experimental community demo of Authorization Code + PKCE, Client Credentials, Password and Device Authorization.
 sidebar: false
 pageClass: playground-page
 head:

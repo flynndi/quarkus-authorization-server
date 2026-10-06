@@ -112,6 +112,7 @@ onBeforeUnmount(() => disconnectViewer())
       <details class="architecture-about">
         <summary>{{ chinese ? '关于' : 'About' }}</summary>
         <div>
+          <p>{{ chinese ? '实验性扩展，由社区维护，不由 Quarkus 项目或团队提供和维护。' : 'Experimental extension maintained by community contributors, not by the Quarkus project or team.' }}</p>
           <p>
             {{ chinese ? '图表源码基线：' : 'Diagram source snapshot: ' }}
             <a :href="sourceLink" target="_blank" rel="noopener">{{ revision.slice(0, 7) }}</a>
@@ -127,7 +128,7 @@ onBeforeUnmount(() => disconnectViewer())
         v-if="frameSource"
         ref="frame"
         :src="frameSource"
-        :title="chinese ? 'Quarkus Authorization Server 交互运行架构图' : 'Quarkus Authorization Server interactive runtime architecture'"
+        :title="chinese ? 'OAuth Server Extension 交互运行架构图（实验性）' : 'OAuth Server Extension interactive runtime architecture (Experimental)'"
         @load="connectViewer"
       />
     </div>

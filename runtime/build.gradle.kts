@@ -38,8 +38,8 @@ mavenPublishing {
     )
 
     pom {
-        name.set("Quarkus Authorization Server")
-        description.set("Quarkus extension runtime for authorization server support.")
+        name.set("OAuth Server Extension for Quarkus (Experimental)")
+        description.set("Experimental, community-maintained OAuth 2.0 authorization server extension with optional OpenID Connect.")
         url.set("https://github.com/flynndi/quarkus-authorization-server")
         licenses {
             license {

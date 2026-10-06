@@ -1,6 +1,6 @@
 # 协议能力与边界
 
-本文记录当前源码范围，不声明与 Spring Authorization Server 完全兼容，也不是功能路线图。详细请求见 [OAuth 端点](./endpoints)和 [OIDC 与注册](./oidc-and-registration)，配置见[服务端配置](./configuration)。
+本文记录这一实验性扩展已实现的协议范围与已知限制，不声明已完全符合所有相关标准或已具备生产就绪条件。详细请求见 [OAuth 端点](./endpoints)和 [OIDC 与注册](./oidc-and-registration)，配置见[服务端配置](./configuration)。
 
 ## Grant 与认证 {#grants}
 

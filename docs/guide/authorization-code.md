@@ -32,6 +32,14 @@ Open `http://localhost:5173/` and sign in as `resource-owner` / `resource-owner-
 
 The client is registered by [`AuthorizationServerPersistence`](https://github.com/flynndi/quarkus-authorization-server/blob/main/examples/authorization-code/src/main/java/io/quarkiverse/authorization/server/example/authorizationcode/authorizationserver/config/AuthorizationServerPersistence.java). It explicitly requires PKCE and consent. The example uses OIDC for discovery, UserInfo and logout.
 
+## Client and resource-server roles {#client-and-resource-server-roles}
+
+The Vue application is the OIDC Relying Party (RP). Its `oidc-client-ts` library starts Authorization Code + PKCE, processes the callback and the returned ID Token, and keeps the client-side user state. It sends the **access token** to the API.
+
+The backend's `quarkus-oidc` configuration uses `application-type=service` for Bearer validation. It does not initiate the browser's login flow in this example. The extension supplies the AS/OP endpoints, and Quarkus Form authenticates the user on the authorization server.
+
+A Quarkus server-side client can instead use the upstream [`quarkus-oidc` web-app mode](https://quarkus.io/guides/security-oidc-code-flow-authentication/) to drive OIDC login. This Vue example does not verify that separate integration. See [the introduction](./index#oidc-roles) for the distinction between client login and resource-server token validation.
+
 ## Follow one request
 
 1. `oidc-client-ts` creates state and a PKCE verifier, then navigates to the authorization endpoint with an S256 challenge.

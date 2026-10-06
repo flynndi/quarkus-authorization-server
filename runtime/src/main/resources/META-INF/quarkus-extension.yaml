@@ -1,6 +1,6 @@
-name: "Authorization Server"
+name: "OAuth Server Extension (Experimental)"
 artifactId: "quarkus-authorization-server"
-description: "Authorization server support for Quarkus"
+description: "Experimental, community-maintained Quarkus extension for building OAuth 2.0 authorization servers with optional OpenID Connect."
 metadata:
   config:
     - "quarkus.authorization-server"
@@ -11,6 +11,6 @@ metadata:
     - "security"
   categories:
     - "security"
-  status: "preview"
+  status: "experimental"
   scm-url: "https://github.com/flynndi/quarkus-authorization-server"
   minimum-java-version: "21"

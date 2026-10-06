@@ -1,18 +1,20 @@
 ---
 layout: home
-title: Quarkus Authorization Server
-titleTemplate: Quarkus Authorization Server
-description: 在 Quarkus 应用中内嵌 OAuth 2.0 授权能力，或构建独立授权服务。比较接入方式，阅读使用指南、查阅配置参考并体验 Playground。
+title: OAuth Server Extension for Quarkus (Experimental)
+titleTemplate: false
+description: 社区维护的实验性 Quarkus 扩展，用于构建 OAuth 2.0 授权服务器，按需启用 OpenID Connect。
 markdownStyles: false
 home:
-  headline: 为 Quarkus 应用
-  emphasis: 构建授权服务。
-  lead: 面向自行管理用户、需要授权其他应用访问 API 的新建或已有 Quarkus 系统。复用 CDI 与 Quarkus Security 构建 OAuth 2.0 授权服务，按需启用 OpenID Connect。
+  status: 实验性 · 社区维护
+  headline: 使用 Quarkus
+  emphasis: 构建自己的授权服务。
+  lead: 面向有经验、选择自行构建并维护授权服务的团队。为新建或已有系统提供 OAuth 2.0 授权服务器扩展，按需启用 OpenID Connect。
+  ownership: 由社区贡献者维护，不由 Quarkus 项目或团队提供和维护。
   start: 快速开始
   startHref: /zh/guide/getting-started
   source: 查看源码
-  versionNote: 集成到你的 Quarkus 应用
-  foundation: 与你的 Quarkus 应用一起工作
+  versionNote: 实验性 Quarkus 扩展
+  foundation: 使用 Quarkus 构建协议端点
   request: 请求
   response: 响应示意
   copy: 复制请求
@@ -21,46 +23,18 @@ home:
   exampleNote: 使用演示凭据，需先启动本地示例。
   exampleLink: Client Credentials 指南
   exampleHref: /zh/guide/client-credentials
-  comparison:
-    title: 选择适合你的授权服务接入方式。
-    lead: 从技术栈、部署方式和用户管理需求出发，找到适合应用的方案。
-    dimension: 关注点
-    labels:
-      - 框架集成
-      - 部署方式
-      - 用户与管理
-      - 适用场景
-    readMore: 了解接入方式
-    products:
-      - name: Quarkus Authorization Server
-        kind: Quarkus 原生应用扩展
-        featured: true
-        details:
-          - 复用 CDI、HTTP Security、SecurityIdentity 与构建期装配。
-          - 内嵌 Quarkus 应用，或由应用构建独立授权服务。
-          - 用户认证和所需的管理界面由应用提供。
-          - 已使用 Quarkus，希望自行掌控用户模型与授权逻辑。
-        link: 接入指南
-        href: /zh/guide/
-      - name: Spring Authorization Server
-        kind: Spring Security 授权框架
-        details:
-          - 通过 Spring Security 过滤器链、Bean 和应用配置集成。
-          - 集成 Spring 应用，或由应用构建独立授权服务。
-          - 用户认证和所需的管理界面由应用提供。
-          - 已使用 Spring Security，希望自行构建授权服务。
-        link: 官方指南
-        href: https://docs.spring.io/spring-security/reference/servlet/oauth2/authorization-server/getting-started.html
-      - name: Keycloak
-        kind: 身份与访问管理服务
-        details:
-          - 基于 Quarkus 的服务，通过控制台配置并通过 SPI 扩展。
-          - 部署 Keycloak 服务，应用通过身份协议接入。
-          - 内置用户与账号管理、用户联合及管理控制台。
-          - 需要开箱即用的身份管理、SSO 和集中管理能力。
-        link: 官方介绍
-        href: https://www.keycloak.org/
-    note: 这里比较产品的接入方式与职责划分。本扩展支持的协议和具体边界请参阅使用指南。
+  scope:
+    title: 面向选择自行构建并维护授权服务的团队。
+    lead: 本项目用于有明确需求的授权服务器开发。应用如果只需要登录或 API 保护，应先考虑成熟的 OAuth/OIDC Provider 与 Quarkus Security。
+    items:
+      - title: 适用场景
+        detail: 新建或已有系统自行管理用户与认证，需要向其他应用签发 token，并选择自行承担授权服务的开发与维护。
+      - title: 扩展提供什么
+        detail: OAuth 协议端点、客户端认证、consent 和 token 签发。按需启用 OpenID Connect，为客户端登录提供 Provider 能力。
+      - title: 团队维护什么
+        detail: 用户认证、访问策略、持久化存储、密钥与部署。团队需要评估协议行为、审查安全性，并负责服务运行。
+    link: 了解角色与职责
+    href: /zh/guide/
   pathsTitle: 从第一次请求，到你的应用。
   pathsLead: 了解接入方式，查阅准确行为，再探索授权流程。
   paths:
@@ -71,7 +45,7 @@ home:
       href: /zh/guide/
     - title: Reference
       subtitle: 查阅细节
-      description: 查找配置项、默认值与扩展方式。完整配置手册和架构说明在仓库中维护。
+      description: 查找配置项、默认值与扩展方式。了解协议边界与支持的定制方式。
       action: 打开参考手册
       href: /zh/reference/
     - title: Playground

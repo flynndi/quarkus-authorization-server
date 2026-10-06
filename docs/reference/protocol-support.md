@@ -1,6 +1,6 @@
 # Protocol support and boundaries
 
-This is the scope of the current source, not a claim of complete Spring Authorization Server compatibility or a feature roadmap. Detailed requests are in [OAuth endpoints](./endpoints) and [OIDC and registration](./oidc-and-registration); settings are in [configuration](./configuration).
+This page records the implemented protocol scope and known limits of this experimental extension. It does not claim complete standards conformance or production readiness. Detailed requests are in [OAuth endpoints](./endpoints) and [OIDC and registration](./oidc-and-registration); settings are in [configuration](./configuration).
 
 ## Grants and authentication {#grants}
 

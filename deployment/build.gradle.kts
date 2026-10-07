@@ -41,8 +41,8 @@ mavenPublishing {
     )
 
     pom {
-        name.set("OAuth Server Extension for Quarkus - Deployment (Experimental)")
-        description.set("Build-time integration for the experimental, community-maintained OAuth Server Extension for Quarkus.")
+        name.set("OAuth2 and OpenID Connect Server Extension - Deployment (Experimental)")
+        description.set("Build-time integration for the experimental, community-maintained OAuth2 and OpenID Connect Server Extension.")
         url.set("https://github.com/flynndi/quarkus-authorization-server")
         licenses {
             license {

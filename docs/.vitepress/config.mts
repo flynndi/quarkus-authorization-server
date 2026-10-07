@@ -40,8 +40,8 @@ const searchZh = {
 }
 
 export default defineConfig({
-  title: 'OAuth Server Extension for Quarkus (Experimental)',
-  titleTemplate: ':title · OAuth Server Extension (Experimental)',
+  title: 'OAuth2 and OpenID Connect Server Extension (Experimental)',
+  titleTemplate: ':title · OAuth2 and OpenID Connect Server Extension (Experimental)',
   description: 'Experimental, community-maintained Quarkus extension for building OAuth 2.0 authorization servers with optional OpenID Connect.',
   lang: 'en-US',
   srcExclude: ['website-plan.md', 'diagrams/**'],
@@ -58,7 +58,7 @@ export default defineConfig({
     ['meta', { name: 'theme-color', content: '#ffffff', media: '(prefers-color-scheme: light)' }],
     ['meta', { name: 'theme-color', content: '#111318', media: '(prefers-color-scheme: dark)' }],
     ['meta', { property: 'og:type', content: 'website' }],
-    ['meta', { property: 'og:site_name', content: 'OAuth Server Extension for Quarkus (Experimental)' }],
+    ['meta', { property: 'og:site_name', content: 'OAuth2 and OpenID Connect Server Extension (Experimental)' }],
     ...(isPreviewDeploy
       ? ([['meta', { name: 'robots', content: 'noindex, nofollow' }]] as const)
       : [])
@@ -98,8 +98,8 @@ export default defineConfig({
     ])
   },
   themeConfig: {
-    logo: { src: '/logo.svg', alt: 'OAuth Server Extension for Quarkus' },
-    siteTitle: 'OAuth Server Extension',
+    logo: { src: '/logo.svg', alt: 'OAuth2 and OpenID Connect Server Extension' },
+    siteTitle: 'OAuth2 & OIDC',
     externalLinkIcon: true,
     search: {
       provider: 'local',

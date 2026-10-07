@@ -1,6 +1,6 @@
 ---
 layout: home
-title: OAuth Server Extension for Quarkus (Experimental)
+title: OAuth2 and OpenID Connect Server Extension (Experimental)
 titleTemplate: false
 description: 社区维护的实验性 Quarkus 扩展，用于构建 OAuth 2.0 授权服务器，按需启用 OpenID Connect。
 markdownStyles: false

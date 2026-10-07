@@ -2,7 +2,7 @@
 
 **实验性 · 社区维护**
 
-OAuth Server Extension for Quarkus 提供构建 OAuth 2.0 授权服务器的组件，可按需启用 OpenID Connect。项目由社区贡献者维护，不由 Quarkus 项目或团队提供和维护。开发与安全审查仍在持续进行。
+OAuth2 and OpenID Connect Server Extension 提供构建 OAuth 2.0 授权服务器的组件，可按需启用 OpenID Connect。项目由社区贡献者维护，不由 Quarkus 项目或团队提供和维护。开发与安全审查仍在持续进行。
 
 ## 适合谁使用
 

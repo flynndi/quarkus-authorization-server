@@ -515,3 +515,9 @@ REF-02 已按用户要求提交并 push：`20d5609`（`docs: document protocol e
 - Chrome 检查中英文首页在 1440 / 768 / 390 px、深浅主题下的 12 种组合，以及中英文引言、Code 指南、协议参考、Playground、架构页的 10 项手机页面检查；未发现横向溢出、资源加载错误或脚本异常。检查复制请求、快速开始跳转及最终截图。
 
 边界：本轮只调整文档、页面呈现和发布元数据，没有修改协议实现或新增依赖；未执行 native 验证、演示后端全链路测试或 Cloudflare 发布，也未修改 GitHub Description。用户 review 后授权提交、push 到 `dev`；推送不代表主分支合并或网站发布完成。
+
+### 2026-10-07：展示名称包含 OpenID Connect
+
+根据后续命名建议，将当前对外名称统一为 `OAuth2 and OpenID Connect Server Extension`，同步 README、中英文引言和页面标题、站点分享元数据、Logo 与架构页的无障碍名称、扩展描述符及 Maven POM。导航栏使用 `OAuth2 & OIDC` 简称以适应窄屏；实验性、社区维护状态及 optional OpenID Connect 的能力描述不变。上方 2026-10-06 条目保留当时的名称作为历史记录。
+
+VitePress production build、扩展元数据校验、POM 生成、runtime/deployment Spotless 和 diff 检查通过。生成的 Maven 坐标与版本未变；Chrome 检查中英文首页、引言与架构页共 8 项，覆盖 320 px 手机和 1440 px 桌面，名称和元数据正确，无横向溢出或页面错误，最终手机截图已检查。本批仅调整展示名称，用户 review 后授权提交、push 到 `dev`；主分支合并与网站发布结果另行确认。

@@ -128,7 +128,7 @@ onBeforeUnmount(() => disconnectViewer())
         v-if="frameSource"
         ref="frame"
         :src="frameSource"
-        :title="chinese ? 'OAuth Server Extension 交互运行架构图（实验性）' : 'OAuth Server Extension interactive runtime architecture (Experimental)'"
+        :title="chinese ? 'OAuth2 and OpenID Connect Server Extension 交互运行架构图（实验性）' : 'OAuth2 and OpenID Connect Server Extension interactive runtime architecture (Experimental)'"
         @load="connectViewer"
       />
     </div>

@@ -1,4 +1,4 @@
-name: "OAuth Server Extension (Experimental)"
+name: "OAuth2 and OpenID Connect Server Extension (Experimental)"
 artifactId: "quarkus-authorization-server"
 description: "Experimental, community-maintained Quarkus extension for building OAuth 2.0 authorization servers with optional OpenID Connect."
 metadata:

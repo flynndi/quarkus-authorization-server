@@ -2,7 +2,7 @@
 
 **Experimental · Community-maintained**
 
-OAuth Server Extension for Quarkus provides building blocks for OAuth 2.0 authorization servers, with optional OpenID Connect. It is maintained by community contributors, not by the Quarkus project or team. Development and security review are ongoing.
+OAuth2 and OpenID Connect Server Extension provides building blocks for OAuth 2.0 authorization servers, with optional OpenID Connect. It is maintained by community contributors, not by the Quarkus project or team. Development and security review are ongoing.
 
 ## Who this is for
 

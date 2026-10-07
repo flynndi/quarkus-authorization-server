@@ -1,4 +1,4 @@
-# OAuth Server Extension for Quarkus
+# OAuth2 and OpenID Connect Server Extension
 
 **Experimental · Community-maintained**
 

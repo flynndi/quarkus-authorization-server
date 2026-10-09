@@ -5,6 +5,7 @@ on:
     branches: [main]
   push:
     branches: [main]
+    paths-ignore: ['docs/**']
   workflow_dispatch:
 
 permissions:
@@ -15,8 +16,51 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect code changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      run_tests: ${{ steps.filter.outputs.run_tests }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      # Keep the PR workflow running so docs-only changes can satisfy CI required.
+      - name: Decide whether JVM and Native tests are needed
+        id: filter
+        env:
+          DIFF_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          DIFF_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import subprocess
+
+          event = os.environ["GITHUB_EVENT_NAME"]
+          base = os.environ["DIFF_BASE_SHA"]
+          head = os.environ["DIFF_HEAD_SHA"]
+          run_tests = True
+          if event in {"pull_request", "push"} and base and set(base) != {"0"}:
+              if event == "pull_request":
+                  base = subprocess.check_output(["git", "merge-base", base, head], text=True).strip()
+              # Disable rename detection: moving code into docs/ must still run tests.
+              changed = subprocess.check_output([
+                  "git", "diff", "--name-only", "--no-renames", "-z", base, head,
+              ])
+              paths = [path for path in changed.split(b"\0") if path]
+              run_tests = not paths or any(not path.startswith(b"docs/") for path in paths)
+              print(f"Changed files: {len(paths)}")
+          print(f"Run JVM and Native tests: {run_tests}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"run_tests={str(run_tests).lower()}\n")
+          PY
+
   jvm:
     name: JVM (Java ${{ matrix.java }})
+    needs: changes
+    if: ${{ needs.changes.outputs.run_tests == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
@@ -110,16 +154,25 @@ jobs:
   required:
     name: CI required
     if: ${{ always() }}
-    needs: [jvm, native]
+    needs: [changes, jvm, native]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      # A skipped or cancelled matrix must never satisfy branch protection.
-      - name: Require every JVM and Native job to succeed
+      # Only a successful docs-only decision permits skipped test matrices.
+      - name: Require successful tests or a docs-only change
         env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          RUN_TESTS: ${{ needs.changes.outputs.run_tests }}
           JVM_RESULT: ${{ needs.jvm.result }}
           NATIVE_RESULT: ${{ needs.native.result }}
         run: |
           printf 'JVM: %s\nNative: %s\n' "$JVM_RESULT" "$NATIVE_RESULT"
-          test "$JVM_RESULT" = success
-          test "$NATIVE_RESULT" = success
+          test "$CHANGES_RESULT" = success
+          if [ "$RUN_TESTS" = false ]; then
+            test "$JVM_RESULT" = skipped
+            test "$NATIVE_RESULT" = skipped
+          else
+            test "$RUN_TESTS" = true
+            test "$JVM_RESULT" = success
+            test "$NATIVE_RESULT" = success
+          fi

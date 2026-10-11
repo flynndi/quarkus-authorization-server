@@ -1,11 +1,12 @@
 package io.quarkiverse.authorization.server.it.resource;
 
+import java.util.Set;
+
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
@@ -27,14 +28,20 @@ public class ResourceOwnerResource {
     @GET
     @Path("/securityIdentity")
     @PermissionsAllowed("securityIdentity")
-    public Response getSecurityIdentity() {
-        return Response.ok(securityIdentity.getPrincipal()).build();
+    public IdentityView getSecurityIdentity() {
+        return new IdentityView(securityIdentity.getPrincipal().getName(), securityIdentity.getRoles());
     }
 
     @GET
     @Path("/jsonWebToken")
     @PermissionsAllowed("jsonWebToken")
-    public Response getJsonWebToken() {
-        return Response.ok(jsonWebToken).build();
+    public TokenView getJsonWebToken() {
+        return new TokenView(jsonWebToken.getSubject(), jsonWebToken.getIssuer(), jsonWebToken.getGroups());
+    }
+
+    public record IdentityView(String name, Set<String> roles) {
+    }
+
+    public record TokenView(String subject, String issuer, Set<String> groups) {
     }
 }

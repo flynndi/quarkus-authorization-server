@@ -26,9 +26,9 @@ dependencies {
     testImplementation(libs.rest.assured)
 }
 
-tasks.withType<Test>().configureEach {
-    // QuarkusDevModeTest otherwise infers Maven's target/test-classes source layout.
-    systemProperty("quarkus.test.source-path", file("src/test/java").absolutePath)
+sourceSets.named("test") {
+    // QuarkusDevModeTest resolves src/test/java two levels above the test classes directory.
+    java.destinationDirectory.set(layout.buildDirectory.dir("test-classes"))
 }
 
 mavenPublishing {

@@ -1,0 +1,78 @@
+quarkus:
+  package:
+    jar:
+      enabled: true
+      type: uber-jar
+  devservices:
+    enabled: false
+  native:
+    resources:
+      # The application loads its user and permission schema through the class loader.
+      includes: sql-schema.sql
+  datasource:
+    db-kind: h2
+    username: sa
+    password: sa
+    jdbc:
+      # Keep demo data in memory; USER and ROLE are table names in sql-schema.sql.
+      url: "jdbc:h2:mem:authorization-server;DB_CLOSE_DELAY=-1;NON_KEYWORDS=USER,ROLE"
+      max-size: 16
+  log:
+    level: INFO
+  http:
+    # Bind locally even when running the packaged demo.
+    host: localhost
+    enable-compression: true
+    auth:
+      form:
+        # Quarkus generates an in-memory cookie encryption key; restart requires a new login.
+        enabled: true
+      permission:
+        # Resource server: Form cookies never authenticate business APIs.
+        resources:
+          paths: /api/*
+          policy: authenticated
+          auth-mechanism: Bearer
+  # Authorization server: validate OAuth requests, issue tokens and expose protocol endpoints.
+  # AuthorizationServerPersistence stores RegisteredClient entries through JDBC; client configuration remains in Java.
+  authorization-server:
+    default-login-page-enabled: true
+    oidc:
+      # Build-time setting: enable OpenID Connect, ID Tokens, discovery, UserInfo and RP-Initiated Logout.
+      # This does not provide a user store or login IdentityProvider, or automatically enable dynamic client registration.
+      enabled: true
+    # Keep JWT iss and discovery aligned with the local HTTP port; tests override this below.
+    issuer: "http://localhost:${quarkus.http.port}"
+
+  # Resource server: quarkus-oidc validates Bearer access tokens, independently of token issuance above.
+  oidc:
+    # The service application type validates Bearer tokens for APIs; it does not initiate browser login or a client code flow.
+    application-type: service
+    # The authorization server and resource server share a process; resolve public keys using the configured issuer.
+    auth-server-url: "${quarkus.authorization-server.issuer}"
+    # Skip discovery against this process at startup; the authorization server still exposes its discovery endpoints.
+    discovery-enabled: false
+    # JWKS path relative to auth-server-url; specify it explicitly when discovery is disabled.
+    jwks-path: /oauth2/jwks
+    jwks:
+      # Fetch public keys on the first token validation to avoid connecting before the application starts listening.
+      resolve-early: false
+    # JWKS connection timeout and retry count, not the token lifetime or JWKS cache duration.
+    connection-timeout: 1S
+    connection-retry-count: 0
+    token:
+      # Validate iss even with discovery disabled; use the same issuer as the authorization server, not any to bypass validation.
+      issuer: "${quarkus.authorization-server.issuer}"
+      # The extension includes client_id in aud by default; this value matches the RegisteredClient configured in Java.
+      # For additional clients, define a shared resource audience and customize issuance, or list the accepted audiences here.
+      audience: quarkus-authorization-server
+      # Validate JWT signatures locally using JWKS; do not fall back to remote introspection.
+      allow-jwt-introspection: false
+      # Opaque access tokens are not accepted; enabling them also requires introspection and its client authentication.
+      allow-opaque-token-introspection: false
+
+"%test":
+  quarkus:
+    authorization-server:
+      # Quarkus tests use test-port (8081 by default), not the normal HTTP port (8080).
+      issuer: "http://localhost:${quarkus.http.test-port}"

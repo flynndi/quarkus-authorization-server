@@ -23,10 +23,5 @@ include(
     "examples:client-credentials",
     "examples:device-authorization",
     "examples:password-grant",
-    "integration-tests:common",
-    "integration-tests:password-grant",
-    "integration-tests:authorization-code",
-    "integration-tests:client-credentials",
-    "integration-tests:device-authorization",
-    "integration-tests:token-exchange",
+    "integration-tests"
 )

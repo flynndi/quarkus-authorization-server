@@ -1,5 +1,6 @@
 package io.quarkiverse.authorization.server.it.oauth2;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
@@ -36,14 +37,17 @@ public class TokenEndpointTest {
         var tokens = OAuthRequests.userTokens("securityIdentity jsonWebToken");
         tokens.then().body("refresh_token", notNullValue());
         RestAssured.given().auth().oauth2(tokens.path("access_token")).get("/api/resource/jsonWebToken")
-                .then().statusCode(200).body("subject", equalTo("admin")).body("groups", hasItem("admin"));
+                .then().statusCode(200).body("subject", equalTo("admin")).body("groups", hasItem("admin"))
+                .body("keySet()", containsInAnyOrder("subject", "issuer", "groups"));
 
         String refreshed = OAuthRequests.client().formParam("grant_type", "refresh_token")
                 .formParam("refresh_token", tokens.<String> path("refresh_token"))
                 .formParam("scope", "securityIdentity").post("/oauth2/token")
                 .then().statusCode(200).body("scope", equalTo("securityIdentity")).extract().path("access_token");
 
-        RestAssured.given().auth().oauth2(refreshed).get("/api/resource/securityIdentity").then().statusCode(200);
+        RestAssured.given().auth().oauth2(refreshed).get("/api/resource/securityIdentity")
+                .then().statusCode(200).body("name", equalTo("admin")).body("roles", hasItem("admin"))
+                .body("keySet()", containsInAnyOrder("name", "roles"));
         RestAssured.given().auth().oauth2(refreshed).get("/api/resource/jsonWebToken").then().statusCode(403);
     }
 

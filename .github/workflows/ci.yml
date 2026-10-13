@@ -2,10 +2,11 @@ name: CI
 
 on:
   pull_request:
-    branches: [main]
-  push:
-    branches: [main]
-    paths-ignore: ['docs/**']
+    branches: [dev, main]
+    # Retargeting a PR from dev to main must upgrade it to the full release checks.
+    types: [opened, synchronize, reopened, edited]
+  # Validate merge candidates through PRs; do not repeat the same suite after merging.
+  # Manual runs provide the full release checks on any selected branch or tag.
   workflow_dispatch:
 
 permissions:
@@ -17,34 +18,39 @@ concurrency:
 
 jobs:
   changes:
-    name: Detect code changes
+    name: Plan CI checks
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
       run_tests: ${{ steps.filter.outputs.run_tests }}
+      java_versions: ${{ steps.filter.outputs.java_versions }}
+      run_native: ${{ steps.filter.outputs.run_native }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
           fetch-depth: 0
       # Keep the PR workflow running so docs-only changes can satisfy CI required.
-      - name: Decide whether JVM and Native tests are needed
+      - name: Select checks for the target branch and changed files
         id: filter
         env:
-          DIFF_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          TARGET_BRANCH: ${{ github.base_ref }}
+          DIFF_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           DIFF_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           python3 - <<'PY'
+          import json
           import os
           import subprocess
 
           event = os.environ["GITHUB_EVENT_NAME"]
+          development_pr = event == "pull_request" and os.environ["TARGET_BRANCH"] == "dev"
+          java_versions = ["21"] if development_pr else ["21", "25"]
           base = os.environ["DIFF_BASE_SHA"]
           head = os.environ["DIFF_HEAD_SHA"]
           run_tests = True
-          if event in {"pull_request", "push"} and base and set(base) != {"0"}:
-              if event == "pull_request":
-                  base = subprocess.check_output(["git", "merge-base", base, head], text=True).strip()
+          if event == "pull_request" and base:
+              base = subprocess.check_output(["git", "merge-base", base, head], text=True).strip()
               # Disable rename detection: moving code into docs/ must still run tests.
               changed = subprocess.check_output([
                   "git", "diff", "--name-only", "--no-renames", "-z", base, head,
@@ -52,9 +58,12 @@ jobs:
               paths = [path for path in changed.split(b"\0") if path]
               run_tests = not paths or any(not path.startswith(b"docs/") for path in paths)
               print(f"Changed files: {len(paths)}")
-          print(f"Run JVM and Native tests: {run_tests}")
+          run_native = run_tests and not development_pr
+          print(f"Run JVM tests: {run_tests}; Java versions: {java_versions}; Native: {run_native}")
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
               output.write(f"run_tests={str(run_tests).lower()}\n")
+              output.write(f"java_versions={json.dumps(java_versions)}\n")
+              output.write(f"run_native={str(run_native).lower()}\n")
           PY
 
   jvm:
@@ -66,7 +75,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java: ['21', '25']
+        java: ${{ fromJSON(needs.changes.outputs.java_versions) }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -96,7 +105,8 @@ jobs:
 
   native:
     name: Native (integration-tests)
-    needs: jvm
+    needs: [changes, jvm]
+    if: ${{ needs.changes.outputs.run_native == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -135,11 +145,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      # Only a successful docs-only decision permits skipped test matrices.
-      - name: Require successful tests or a docs-only change
+      # A test may be skipped only when the successful plan explicitly excludes it.
+      - name: Require all planned checks to pass
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
           RUN_TESTS: ${{ needs.changes.outputs.run_tests }}
+          RUN_NATIVE: ${{ needs.changes.outputs.run_native }}
           JVM_RESULT: ${{ needs.jvm.result }}
           NATIVE_RESULT: ${{ needs.native.result }}
         run: |
@@ -147,9 +158,14 @@ jobs:
           test "$CHANGES_RESULT" = success
           if [ "$RUN_TESTS" = false ]; then
             test "$JVM_RESULT" = skipped
-            test "$NATIVE_RESULT" = skipped
+            test "$RUN_NATIVE" = false
           else
             test "$RUN_TESTS" = true
             test "$JVM_RESULT" = success
+          fi
+          if [ "$RUN_NATIVE" = false ]; then
+            test "$NATIVE_RESULT" = skipped
+          else
+            test "$RUN_NATIVE" = true
             test "$NATIVE_RESULT" = success
           fi

@@ -1,0 +1,140 @@
+name: Release
+
+on:
+  push:
+    tags: ['[0-9]*', 'v[0-9]*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish to Maven Central
+    # Restrict publishing, including re-runs, without restricting contributor CI.
+    if: >-
+      github.repository == 'flynndi/quarkus-authorization-server' &&
+      github.actor == 'flynndi' &&
+      github.triggering_actor == 'flynndi' &&
+      !github.event.deleted
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      # Tag the main commit after the release PR passes CI and is merged.
+      - name: Verify release tag, version and main history
+        id: release
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+
+          tag = os.environ["GITHUB_REF_NAME"]
+          version = tag.removeprefix("v")
+          if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?", version):
+              raise SystemExit("Expected a version tag such as 1.0.0 or 1.0.0-beta3 (optional v prefix)")
+          if version.upper().endswith("-SNAPSHOT"):
+              raise SystemExit("Snapshot versions cannot be released")
+          versions = []
+          for line in Path("gradle.properties").read_text(encoding="utf-8").splitlines():
+              key, separator, value = line.partition("=")
+              if separator and key.strip() == "VERSION":
+                  versions.append(value.strip())
+          if versions != [version]:
+              raise SystemExit("The tag must match the single VERSION entry in gradle.properties")
+          head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          tagged = subprocess.check_output(["git", "rev-parse", f"refs/tags/{tag}^{{commit}}"], text=True).strip()
+          if head != tagged:
+              raise SystemExit("The tag no longer points to the triggering commit")
+          # A merged feature commit is an ancestor too; require the main-line commit itself.
+          main_commits = subprocess.check_output([
+              "git", "rev-list", "--first-parent", "refs/remotes/origin/main",
+          ], text=True).splitlines()
+          if head not in main_commits:
+              raise SystemExit("Tag a commit on main itself, after merging the release PR")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"version={version}\n")
+              output.write(f"prerelease={str('-' in version).lower()}\n")
+          print(f"Release {tag} from main commit {head}")
+          PY
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+      # Central credentials are user-token credentials, not the portal login password.
+      # SIGNING_KEY is the complete ASCII-armored private key, not base64.
+      # SIGNING_PASSWORD and SIGNING_KEY_ID are optional for an unencrypted primary key.
+      - name: Publish runtime and deployment together
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.SIGNING_KEY_ID }}
+        run: |
+          set -euo pipefail
+          for required in \
+            ORG_GRADLE_PROJECT_mavenCentralUsername \
+            ORG_GRADLE_PROJECT_mavenCentralPassword \
+            ORG_GRADLE_PROJECT_signingInMemoryKey; do
+            if [ -z "${!required}" ]; then
+              printf '::error::Missing required publishing credential: %s\n' "$required"
+              exit 1
+            fi
+          done
+          # An absent optional secret must remain absent, rather than an empty Gradle property.
+          for optional in ORG_GRADLE_PROJECT_signingInMemoryKeyPassword ORG_GRADLE_PROJECT_signingInMemoryKeyId; do
+            if [ -z "${!optional}" ]; then
+              unset "$optional"
+            fi
+          done
+          ./gradlew :runtime:publishAndReleaseToMavenCentral :deployment:publishAndReleaseToMavenCentral \
+            -PmavenCentralDeploymentValidation=PUBLISHED \
+            "-Dorg.gradle.jvmargs=-Xmx2g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8" \
+            --no-daemon --no-parallel --max-workers=2 --console=plain --stacktrace
+
+  github-release:
+    name: Create GitHub release
+    needs: publish
+    # Check both actors again when only this failed job is re-run.
+    if: >-
+      github.repository == 'flynndi/quarkus-authorization-server' &&
+      github.actor == 'flynndi' &&
+      github.triggering_actor == 'flynndi' &&
+      !github.event.deleted
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      # If this step fails after Central succeeds, re-run only failed jobs.
+      - name: Create release with generated notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_VERSION: ${{ needs.publish.outputs.version }}
+          PRERELEASE: ${{ needs.publish.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            printf 'GitHub release %s already exists; leaving it unchanged.\n' "$RELEASE_TAG"
+            exit 0
+          fi
+          args=(--repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes --title "$RELEASE_VERSION")
+          if [ "$PRERELEASE" = true ]; then
+            args+=(--prerelease --latest=false)
+          fi
+          gh release create "$RELEASE_TAG" "${args[@]}"

@@ -26,7 +26,9 @@ curl --header 'Authorization: Bearer REPLACE_WITH_OPENID_ACCESS_TOKEN' \
   'http://localhost:8080/userinfo'
 ```
 
-[DefaultOidcUserInfoMapper] 按授予的 scope，从已存储 ID Token 中选择 claims：`sub` 加适用的 `profile`、`email`、`phone`、`address`、`groups` 和 `perms` claims。它不重新加载用户，也不补出 ID Token 中不存在的 claims。应用可替换 `OidcUserInfoMapper`。响应为 JSON，未实现签名/加密 UserInfo 响应。
+[DefaultOidcUserInfoMapper] 遵循 [OIDC Core §5.4](https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims)，按当前 access token 的 `profile`、`email`、`phone` 和 `address` scope，从已存储 ID Token 中选择对应 claims，并保留 `sub`。它不重新加载用户，也不补出 ID Token 中不存在的 claims。响应为 JSON，未实现签名/加密 UserInfo 响应。
+
+默认不包含 `groups`、`perms` 等应用自定义的 scope 到 claim 映射，即使这些 scope 已获授权且 ID Token 中存在同名 claim，也不会自动返回。应用可提供 `OidcUserInfoMapper` CDI Bean，结合当前 access token 的 scope 和自身策略，明确这些映射及允许披露的 claims。
 
 典型错误为 `401 invalid_token`、`403 insufficient_scope` 和 `400 invalid_request`；认证/授权错误包含相应 challenge。内部映射错误使用 `500 server_error`。见 [OidcUserInfoAuthenticationMechanism]、[OidcUserInfoEndpointHandler] 和 [OidcUserInfoService]。
 
@@ -92,9 +94,9 @@ curl --header 'Authorization: Bearer REPLACE_WITH_INITIAL_ACCESS_TOKEN' \
 
 ## 源码与既有覆盖 {#evidence}
 
-源码链接固定到核对的提交。既有覆盖包括 [OidcUserInfoEndpointTest]、[OidcLogoutEndpointTest]、[OAuthClientRegistrationEndpointTest]、[OAuthClientRegistrationOpenTest] 和 [OidcClientRegistrationPolicyTest]。这些测试区分受保护/开放注册并验证失败行为；本次纯文档修改未重新执行它们。
+默认 UserInfo mapper 链接指向 `main`，其他源码链接固定到核对的提交。既有覆盖包括 [OidcUserInfoEndpointTest]、[OidcLogoutEndpointTest]、[OAuthClientRegistrationEndpointTest]、[OAuthClientRegistrationOpenTest] 和 [OidcClientRegistrationPolicyTest]。这些测试区分受保护/开放注册并验证失败行为。
 
-[DefaultOidcUserInfoMapper]: https://github.com/flynndi/quarkus-authorization-server/blob/f8edc23584e7857f70189e8c975129bd14cc8d82/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/oidc/userinfo/DefaultOidcUserInfoMapper.java
+[DefaultOidcUserInfoMapper]: https://github.com/flynndi/quarkus-authorization-server/blob/main/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/oidc/userinfo/DefaultOidcUserInfoMapper.java
 [OAuth2ClientRegistrationRequestParser]: https://github.com/flynndi/quarkus-authorization-server/blob/f8edc23584e7857f70189e8c975129bd14cc8d82/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/client/registration/web/OAuth2ClientRegistrationRequestParser.java
 [OAuth2ClientRegistrationService]: https://github.com/flynndi/quarkus-authorization-server/blob/f8edc23584e7857f70189e8c975129bd14cc8d82/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/client/registration/OAuth2ClientRegistrationService.java
 [OAuthClientRegistrationEndpointTest]: https://github.com/flynndi/quarkus-authorization-server/blob/f8edc23584e7857f70189e8c975129bd14cc8d82/deployment/src/test/java/io/quarkiverse/authorization/server/deployment/OAuthClientRegistrationEndpointTest.java

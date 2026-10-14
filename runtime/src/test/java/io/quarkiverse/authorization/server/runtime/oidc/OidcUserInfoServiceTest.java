@@ -87,7 +87,7 @@ class OidcUserInfoServiceTest {
     }
 
     @Test
-    void mapsStandardAndApplicationScopesButNeverLeaksProtocolOrUnscopedClaims() {
+    void mapsOnlyStandardClaimsEvenWhenApplicationScopesAreGranted() {
         this.service.save(
                 authorization(
                         Set.of(
@@ -98,10 +98,35 @@ class OidcUserInfoServiceTest {
         assertEquals("Alice", userInfo.getFullName());
         assertEquals("CN", userInfo.getAddress().getCountry());
         assertEquals("+123", userInfo.getPhoneNumber());
-        assertTrue(userInfo.getClaims().containsKey("groups"));
-        assertTrue(userInfo.getClaims().containsKey("perms"));
+        assertFalse(userInfo.getClaims().containsKey("groups"));
+        assertFalse(userInfo.getClaims().containsKey("perms"));
         assertFalse(userInfo.getClaims().containsKey("iss"));
         assertFalse(userInfo.getClaims().containsKey("secret"));
+    }
+
+    @Test
+    void allowsApplicationMapperToSelectCustomClaimsUsingCurrentAccessScopes() {
+        var provider = new OidcUserInfoService(this.service, context -> {
+            OidcIdToken idToken = context.authorization().getToken(OidcIdToken.class).getToken();
+            var userInfo = OidcUserInfo.builder().subject(idToken.getSubject());
+            for (String claim : List.of("groups", "perms")) {
+                if (context.accessToken().getScopes().contains(claim)) {
+                    userInfo.claim(claim, idToken.getClaims().get(claim));
+                }
+            }
+            return userInfo.build();
+        });
+
+        this.service.save(authorization(Set.of("openid", "groups", "perms")).build());
+        assertEquals(Map.of("sub", "id-token-subject", "groups", List.of("user"), "perms", List.of("read")),
+                provider.userInfo(identity("alice", "access")).getClaims());
+
+        this.service.save(authorization(Set.of("openid", "groups")).build());
+        assertEquals(Map.of("sub", "id-token-subject", "groups", List.of("user")),
+                provider.userInfo(identity("alice", "access")).getClaims());
+
+        this.service.save(authorization(Set.of("openid")).build());
+        assertEquals(Map.of("sub", "id-token-subject"), provider.userInfo(identity("alice", "access")).getClaims());
     }
 
     @Test

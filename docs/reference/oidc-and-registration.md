@@ -26,7 +26,9 @@ curl --header 'Authorization: Bearer REPLACE_WITH_OPENID_ACCESS_TOKEN' \
   'http://localhost:8080/userinfo'
 ```
 
-[DefaultOidcUserInfoMapper] selects claims from the stored ID Token using the granted scopes: `sub` plus applicable `profile`, `email`, `phone`, `address`, `groups` and `perms` claims. It does not reload the user or create claims missing from that ID Token. Applications may replace `OidcUserInfoMapper`. The response is JSON; signed/encrypted UserInfo responses are not implemented.
+[DefaultOidcUserInfoMapper] selects `sub` and the claims requested by the current access token's `profile`, `email`, `phone` and `address` scopes from the stored ID Token, following [OIDC Core §5.4](https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims). It does not reload the user or create claims missing from that ID Token. The response is JSON; signed/encrypted UserInfo responses are not implemented.
+
+Application-specific scope-to-claim mappings, such as `groups` and `perms`, are not included by default, even when those scopes are granted and those claims exist in the ID Token. Applications can provide an `OidcUserInfoMapper` CDI bean to define these mappings and control which claims are disclosed using the current access token's scopes and their own policy.
 
 Typical errors are `401 invalid_token`, `403 insufficient_scope` and `400 invalid_request`; authentication/authorization failures include the relevant challenge. Internal mapping failures use `500 server_error`. See [OidcUserInfoAuthenticationMechanism], [OidcUserInfoEndpointHandler] and [OidcUserInfoService].
 
@@ -92,9 +94,9 @@ Typical statuses are `400 invalid_request`, `invalid_client_metadata`, `invalid_
 
 ## Source and existing coverage {#evidence}
 
-Source links are pinned to the audited commit. Existing coverage includes [OidcUserInfoEndpointTest], [OidcLogoutEndpointTest], [OAuthClientRegistrationEndpointTest], [OAuthClientRegistrationOpenTest] and [OidcClientRegistrationPolicyTest]. These tests distinguish protected/open registration and validate failure behavior; they were not rerun as part of this documentation-only change.
+The default UserInfo mapper links to `main`; other source links are pinned to the audited commit. Existing coverage includes [OidcUserInfoEndpointTest], [OidcLogoutEndpointTest], [OAuthClientRegistrationEndpointTest], [OAuthClientRegistrationOpenTest] and [OidcClientRegistrationPolicyTest]. These tests distinguish protected/open registration and validate failure behavior.
 
-[DefaultOidcUserInfoMapper]: https://github.com/flynndi/quarkus-authorization-server/blob/f8edc23584e7857f70189e8c975129bd14cc8d82/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/oidc/userinfo/DefaultOidcUserInfoMapper.java
+[DefaultOidcUserInfoMapper]: https://github.com/flynndi/quarkus-authorization-server/blob/main/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/oidc/userinfo/DefaultOidcUserInfoMapper.java
 [OAuth2ClientRegistrationRequestParser]: https://github.com/flynndi/quarkus-authorization-server/blob/f8edc23584e7857f70189e8c975129bd14cc8d82/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/client/registration/web/OAuth2ClientRegistrationRequestParser.java
 [OAuth2ClientRegistrationService]: https://github.com/flynndi/quarkus-authorization-server/blob/f8edc23584e7857f70189e8c975129bd14cc8d82/runtime/src/main/java/io/quarkiverse/authorization/server/runtime/client/registration/OAuth2ClientRegistrationService.java
 [OAuthClientRegistrationEndpointTest]: https://github.com/flynndi/quarkus-authorization-server/blob/f8edc23584e7857f70189e8c975129bd14cc8d82/deployment/src/test/java/io/quarkiverse/authorization/server/deployment/OAuthClientRegistrationEndpointTest.java

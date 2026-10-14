@@ -34,7 +34,7 @@ import io.quarkiverse.authorization.server.oidc.userinfo.OidcUserInfoMapper;
 import io.quarkiverse.authorization.server.token.OAuth2AccessToken;
 import io.quarkus.arc.DefaultBean;
 
-/** Default scope-based UserInfo mapping policy. Instances contain no per-request state. */
+/** Default OIDC Core scope-based UserInfo mapping policy. Instances contain no per-request state. */
 @Singleton
 @DefaultBean
 public final class DefaultOidcUserInfoMapper implements OidcUserInfoMapper {
@@ -85,13 +85,6 @@ public final class DefaultOidcUserInfoMapper implements OidcUserInfoMapper {
         if (requestedScopes.contains(OidcScopes.PROFILE)) {
             scopeRequestedClaimNames.addAll(PROFILE_CLAIMS);
         }
-        if (requestedScopes.contains("groups")) {
-            scopeRequestedClaimNames.add("groups");
-        }
-        if (requestedScopes.contains("perms")) {
-            scopeRequestedClaimNames.add("perms");
-        }
-
         Map<String, Object> requestedClaims = new HashMap<>(claims);
         requestedClaims
                 .keySet()

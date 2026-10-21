@@ -9,6 +9,7 @@ import io.quarkiverse.authorization.server.grant.password.PasswordGrantRequest;
 import io.quarkiverse.authorization.server.model.OAuth2AuthenticationException;
 import io.quarkiverse.authorization.server.model.OAuth2Error;
 import io.quarkiverse.authorization.server.model.OAuth2ErrorCodes;
+import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.credential.PasswordCredential;
 import io.quarkus.security.identity.IdentityProviderManager;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -40,7 +41,9 @@ public final class PasswordIdentityAuthenticator {
                             }
                             return Uni.createFrom()
                                     .deferred(() -> this.identities.authenticate(request))
-                                    .onFailure()
+                                    // Only explicit authentication rejection is an invalid grant.
+                                    // Infrastructure failures must reach the HTTP error boundary unchanged.
+                                    .onFailure(AuthenticationFailedException.class)
                                     .transform(PasswordIdentityAuthenticator::invalidGrant)
                                     .onItem()
                                     .ifNull()

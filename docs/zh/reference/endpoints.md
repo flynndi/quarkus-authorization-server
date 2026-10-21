@@ -62,7 +62,7 @@ curl -i --get 'http://localhost:8080/oauth2/authorize' \
 
 这段只展示请求，不代表已有浏览器登录会话。需先配置 `web` client、redirect、scope 和 OIDC。[Code 指南](/zh/guide/authorization-code)提供可运行的浏览器流程。
 
-Client、response type、redirect、scope 和 PKCE 在登录前校验。只有服务端已验证过的 URI 才会收到错误重定向，否则返回 JSON `400`。典型错误包括 `invalid_request`、`invalid_scope`、`unauthorized_client` 和 `unsupported_response_type`。OIDC `prompt=none` 在无法静默完成时返回 `login_required` 或 `consent_required`；`none` 不能与其他 prompt 组合。这不等于实现了完整重认证或账号选择流程。
+Client、response type、redirect、scope 和 PKCE 在登录前校验。协议校验错误只重定向到服务端已验证过的 URI，否则返回 JSON `400`。典型错误包括 `invalid_request`、`invalid_scope`、`unauthorized_client` 和 `unsupported_response_type`。OIDC `prompt=none` 在无法静默完成时返回 `login_required` 或 `consent_required`；`none` 不能与其他 prompt 组合。这不等于实现了完整重认证或账号选择流程。
 
 Consent 是向同一端点提交的另一种表单 POST，不带 `response_type` 或 `request_uri`：
 
@@ -102,7 +102,9 @@ curl --user 'machine:REPLACE_WITH_CLIENT_SECRET' \
 
 响应包含 `access_token`、`token_type`、有效期和非空时的 `scope`，以及适用时的 `refresh_token`、OIDC `id_token` 或 Token Exchange `issued_token_type`。DPoP 使用 `DPoP` proof 请求头，受支持的绑定流程返回 `token_type=DPoP`；见 [DPoP](./dpop) 和 [refresh 边界](./protocol-support#tokens)。
 
-典型错误：`invalid_request`、`invalid_client`、`unauthorized_client`、`invalid_grant`、`invalid_scope`、`unsupported_grant_type`、`unsupported_token_type`、`invalid_dpop_proof`。设备轮询还可能返回 `authorization_pending`、`access_denied` 或 `expired_token`。表单媒体类型错误返回 `415`；客户端认证后的协议错误使用 `400`。认证可早于媒体类型检查失败。不能假定所有错误都有 JSON body，或所有内部错误都使用 `500`。
+典型错误：`invalid_request`、`invalid_client`、`unauthorized_client`、`invalid_grant`、`invalid_scope`、`unsupported_grant_type`、`unsupported_token_type`、`invalid_dpop_proof`。设备轮询还可能返回 `authorization_pending`、`access_denied` 或 `expired_token`。表单媒体类型错误返回 `415`；客户端认证后的协议请求错误使用 `400`。token 端点处理的内部故障返回 `500`，响应仅包含 `{"error":"server_error"}`，服务端记录原始异常。显式抛出的 `server_error` 也遵循此规则，不返回其 description 和 URI。认证可早于端点或媒体类型检查失败，因此不能假定所有错误都有 JSON body。
+
+Password grant 中，`IdentityProvider` 以 `AuthenticationFailedException` 拒绝凭据，或未返回身份时，返回 `400 invalid_grant`。显式的 `OAuth2AuthenticationException` 保留其协议错误分类；SQL、基础设施等尚未分类的故障传递到内部错误处理器。应用不要将基础设施故障包装成 `AuthenticationFailedException`，扩展依靠这一语义区分错误类型。
 
 ## Introspection 与 revocation {#token-management}
 
@@ -129,7 +131,7 @@ Device authorization 接收可选空格分隔 `scope`。Public client 提交 `cl
 
 用户打开 `verification_uri` 输入 code，或打开带 `user_code` 的 `verification_uri_complete`。GET 和包含 `user_code` 的表单 POST 可准备确认，不能批准设备。确认 POST 必须包含单值 `client_id`、`user_code`、内部 `state`、`approved=true` 或 `false`，以及可选重复 `scope`。State 绑定用户、client 和设备。与 Code consent 的决定钩子不同，显式拒绝不能被 `DeviceConsentCustomizer` 改为批准。
 
-默认页面在本地报告完成；设备通过轮询 `/oauth2/token` 获取 token。非法或不匹配的提交返回错误页，通常为 `400`；意外验证错误使用 `500`。见 [OAuth2DeviceVerificationEndpointHandler] 和 [DeviceConsentSubmissionParser]。
+默认页面在本地报告完成；设备通过轮询 `/oauth2/token` 获取 token。非法或不匹配的提交返回错误页，通常为 `400`；内部验证故障使用 `500` 和通用的 `server_error`。服务端记录原始异常，不将内部 description 和 URI 传给页面。见 [OAuth2DeviceVerificationEndpointHandler] 和 [DeviceConsentSubmissionParser]。
 
 ## Pushed Authorization Requests {#par}
 
@@ -153,7 +155,7 @@ curl -i --get 'http://localhost:8080/oauth2/authorize' \
 
 `201` 响应返回 `request_uri` 和 `expires_in=300`。Redirect、scope、state 和 prompt 只由已存储的请求决定，外层 query 不能覆盖。服务端检查引用的 client、有效期和当前客户端策略。登录和静默错误响应保留引用；创建待确认 consent 后消费引用，并通过内部 consent state 续接，直接签发 code 也会消费引用。普通授权仍可使用，没有逐 client 的强制 PAR 设置。
 
-典型错误包括 `invalid_request`、`invalid_scope` 和 `invalid_client`。PAR 错误返回 JSON，不做浏览器重定向；不支持的方法返回 `405`，媒体类型错误为 `415`，内部失败为 `500`。浏览器阶段的引用错误遵守 authorize 的已验证 redirect 规则。实现见 [PushedAuthorizationEndpointHandler] 和 [PushedAuthorizationRequests]。
+典型错误包括 `invalid_request`、`invalid_scope` 和 `invalid_client`。PAR 错误返回 JSON，不做浏览器重定向；不支持的方法返回 `405`，媒体类型错误为 `415`，内部失败为 `500`。内部故障与 token 端点采用相同的脱敏 `server_error` 响应和服务端异常日志。浏览器阶段的引用错误遵守 authorize 的已验证 redirect 规则。实现见 [PushedAuthorizationEndpointHandler] 和 [PushedAuthorizationRequests]。
 
 ## 源码与既有覆盖 {#evidence}
 

@@ -81,7 +81,7 @@ class BlockingOAuth2AuthorizationServiceTest {
 
         tokenRequest()
                 .then()
-                .statusCode(400)
+                .statusCode(500)
                 .body("error", equalTo("server_error"))
                 .body("$", not(hasKey("access_token")));
     }
@@ -96,7 +96,7 @@ class BlockingOAuth2AuthorizationServiceTest {
                 .contentType(ContentType.URLENC)
                 .formParam("token", accessToken)
                 .post("/oauth2/revoke")
-                .then().statusCode(400)
+                .then().statusCode(500)
                 .body("error", equalTo("server_error"))
                 .body("$", not(hasKey("access_token")));
 

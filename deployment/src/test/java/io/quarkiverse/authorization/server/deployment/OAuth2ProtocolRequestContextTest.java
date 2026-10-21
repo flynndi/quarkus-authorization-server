@@ -178,21 +178,21 @@ class OAuth2ProtocolRequestContextTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {
-            "CODE",
-            "REFRESH",
-            "DEVICE",
-            "EXCHANGE",
-            "PASSWORD",
-            "INTROSPECTION",
-            "REVOCATION"
+    @CsvSource({
+            "CODE,find", "CODE,customize", "CODE,save",
+            "REFRESH,find", "REFRESH,customize", "REFRESH,save",
+            "DEVICE,find", "DEVICE,customize", "DEVICE,save",
+            "EXCHANGE,find", "EXCHANGE,customize", "EXCHANGE,save",
+            "PASSWORD,customize", "PASSWORD,save",
+            "INTROSPECTION,find", "INTROSPECTION,client-by-id",
+            "REVOCATION,find", "REVOCATION,save"
     })
-    void protocolFailuresReleaseScopeWithoutSaving(String modeName) throws Exception {
+    void protocolFailuresReleaseScopeWithoutSaving(String modeName, String failingStage) throws Exception {
         Mode mode = Mode.valueOf(modeName);
         Flow flow = create(mode);
-        flow.failAt = mode.issues ? "customize" : mode == Mode.INTROSPECTION ? "client-by-id" : "save";
+        flow.failAt = failingStage;
         Response response = request(flow);
-        assertEquals(400, response.statusCode());
+        assertEquals(500, response.statusCode());
         assertEquals("server_error", response.path("error"));
         assertReleased(flow);
         assertEquals(0, flow.saves.get());
@@ -395,7 +395,7 @@ class OAuth2ProtocolRequestContextTest {
             for (String mode : List.of("CODE", "REFRESH", "DEVICE", "EXCHANGE", "PASSWORD")) {
                 cancelledGrantKeepsScopeUntilBlockingIssuanceExits(mode);
                 overlappingHttpRequestsKeepIndependentScopes(mode);
-                protocolFailuresReleaseScopeWithoutSaving(mode);
+                protocolFailuresReleaseScopeWithoutSaving(mode, "customize");
             }
             overlappingHttpRequestsKeepIndependentScopes("INTROSPECTION");
             overlappingHttpRequestsKeepIndependentScopes("REVOCATION");

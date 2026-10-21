@@ -135,7 +135,9 @@ class OAuth2ClientCredentialsRequestContextTest {
             case "customizer" -> "invalid_scope";
             default -> "server_error";
         };
-        tokenRequest(observation).then().statusCode(400).body("error", equalTo(errorCode));
+        tokenRequest(observation).then()
+                .statusCode("save".equals(failingStage) ? 500 : 400)
+                .body("error", equalTo(errorCode));
 
         List<String> stages = switch (failingStage) {
             case "validator" -> List.of("validator");

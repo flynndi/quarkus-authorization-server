@@ -62,7 +62,7 @@ curl -i --get 'http://localhost:8080/oauth2/authorize' \
 
 This illustrates the request, not an authenticated browser session. The `web` client, redirects, scopes and OIDC must be configured first. The [Code guide](/guide/authorization-code) provides the runnable browser flow.
 
-Client, response type, redirect, scopes and PKCE are checked before login. An error redirects only to a URI that the server has validated; otherwise it returns JSON `400`. Typical errors are `invalid_request`, `invalid_scope`, `unauthorized_client` and `unsupported_response_type`. OIDC `prompt=none` returns `login_required` or `consent_required` when silent completion is impossible; `none` cannot be combined with another prompt. It does not add a complete reauthentication/account-selection workflow.
+Client, response type, redirect, scopes and PKCE are checked before login. A protocol validation error redirects only to a URI that the server has validated; otherwise it returns JSON `400`. Typical errors are `invalid_request`, `invalid_scope`, `unauthorized_client` and `unsupported_response_type`. OIDC `prompt=none` returns `login_required` or `consent_required` when silent completion is impossible; `none` cannot be combined with another prompt. It does not add a complete reauthentication/account-selection workflow.
 
 A consent submission is a separate form POST to the same endpoint, without `response_type` or `request_uri`:
 
@@ -102,7 +102,9 @@ curl --user 'machine:REPLACE_WITH_CLIENT_SECRET' \
 
 The response contains `access_token`, `token_type`, expiry and, when nonempty, `scope`, plus `refresh_token`, OIDC `id_token` or Token Exchange `issued_token_type` when applicable. DPoP uses a `DPoP` proof header and returns `token_type=DPoP` on supported bound flows; see [DPoP](./dpop) and [refresh boundaries](./protocol-support#tokens).
 
-Typical errors: `invalid_request`, `invalid_client`, `unauthorized_client`, `invalid_grant`, `invalid_scope`, `unsupported_grant_type`, `unsupported_token_type`, `invalid_dpop_proof`. Device polling also returns `authorization_pending`, `access_denied` or `expired_token`. Wrong form media type returns `415`; protocol errors after client authentication use `400`. Authentication can fail before media-type checks. Do not depend on every failure producing a JSON body or on all internal failures using `500`.
+Typical errors: `invalid_request`, `invalid_client`, `unauthorized_client`, `invalid_grant`, `invalid_scope`, `unsupported_grant_type`, `unsupported_token_type`, `invalid_dpop_proof`. Device polling also returns `authorization_pending`, `access_denied` or `expired_token`. Wrong form media type returns `415`; protocol request errors after client authentication use `400`. Internal failures handled by the token endpoint return `500` with only `{"error":"server_error"}`; the server logs the original exception. This also applies to an explicitly raised `server_error`: its description and URI are not returned. Authentication can fail before the endpoint or media-type checks, so not every failure produces a JSON body.
+
+For the Password grant, an `IdentityProvider` rejecting credentials with `AuthenticationFailedException`, or returning no identity, produces `400 invalid_grant`. Explicit `OAuth2AuthenticationException` errors keep their protocol classification. Unclassified provider failures, including SQL and infrastructure errors, propagate to the internal-error handler. Do not wrap infrastructure failures in `AuthenticationFailedException`; the extension relies on that distinction to classify the response.
 
 ## Introspection and revocation {#token-management}
 
@@ -129,7 +131,7 @@ Device authorization accepts optional space-separated `scope`. Public clients se
 
 The user opens `verification_uri` to enter a code, or `verification_uri_complete` with `user_code`. GET and a form POST containing `user_code` can prepare confirmation; they do not approve the device. Confirmation POST requires single `client_id`, `user_code`, internal `state`, `approved=true` or `false`, and optional repeated `scope`. The state binds the user, client and device. Explicit rejection cannot be turned into approval by `DeviceConsentCustomizer`, unlike the Code consent decision hook.
 
-The default page reports completion locally; the device obtains tokens by polling `/oauth2/token`. Invalid or mismatched submissions return an error page, typically `400`; unexpected verification failures use `500`. See [OAuth2DeviceVerificationEndpointHandler] and [DeviceConsentSubmissionParser].
+The default page reports completion locally; the device obtains tokens by polling `/oauth2/token`. Invalid or mismatched submissions return an error page, typically `400`; internal verification failures use `500` with a generic `server_error`. The server logs the original exception; internal descriptions and URIs are not passed to the page. See [OAuth2DeviceVerificationEndpointHandler] and [DeviceConsentSubmissionParser].
 
 ## Pushed Authorization Requests {#par}
 
@@ -153,7 +155,7 @@ curl -i --get 'http://localhost:8080/oauth2/authorize' \
 
 The `201` response supplies `request_uri` and `expires_in=300`. Only the stored request controls redirects, scopes, state and prompt; outer query parameters cannot override it. The reference is checked for client, expiry and current client policy. Login and silent-error responses preserve the reference. Creating pending consent consumes it and continues with the internal consent state; direct code issuance also consumes it. Ordinary authorization remains available: there is no per-client mandatory-PAR setting.
 
-Typical failures include `invalid_request`, `invalid_scope` and `invalid_client`. PAR returns errors as JSON, never as a browser redirect; unsupported methods return `405`, wrong media type `415`, internal failure `500`. Browser-side reference errors follow the authorize endpoint's validated-redirect rule. Implementation: [PushedAuthorizationEndpointHandler] and [PushedAuthorizationRequests].
+Typical failures include `invalid_request`, `invalid_scope` and `invalid_client`. PAR returns errors as JSON, never as a browser redirect; unsupported methods return `405`, wrong media type `415`, internal failure `500`. Internal failures use the same sanitized `server_error` response and server-side exception logging as the token endpoint. Browser-side reference errors follow the authorize endpoint's validated-redirect rule. Implementation: [PushedAuthorizationEndpointHandler] and [PushedAuthorizationRequests].
 
 ## Source and existing coverage {#evidence}
 

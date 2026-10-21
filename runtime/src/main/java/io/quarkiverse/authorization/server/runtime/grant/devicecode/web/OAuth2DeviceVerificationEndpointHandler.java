@@ -3,6 +3,8 @@ package io.quarkiverse.authorization.server.runtime.grant.devicecode.web;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
+import org.jboss.logging.Logger;
+
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.quarkiverse.authorization.server.grant.devicecode.DeviceConsentSubmission;
 import io.quarkiverse.authorization.server.grant.devicecode.DeviceVerificationRequest;
@@ -23,6 +25,7 @@ import io.vertx.ext.web.RoutingContext;
 @Singleton
 public final class OAuth2DeviceVerificationEndpointHandler implements Handler<RoutingContext> {
 
+    private static final Logger LOG = Logger.getLogger(OAuth2DeviceVerificationEndpointHandler.class);
     private static final String FORM_URLENCODED = "application/x-www-form-urlencoded";
     private static final String ERROR_URI = "https://datatracker.ietf.org/doc/html/rfc6749#section-5.2";
 
@@ -90,36 +93,44 @@ public final class OAuth2DeviceVerificationEndpointHandler implements Handler<Ro
                             OAuth2ErrorCodes.INVALID_REQUEST,
                             "OAuth 2.0 Parameter: user_code",
                             ERROR_URI));
-        } catch (OAuth2AuthenticationException exception) {
-            sendError(context, exception.getError());
+        } catch (RuntimeException failure) {
+            handleFailure(context, failure);
         }
     }
 
     private void handleResult(RoutingContext context, DeviceVerificationOutcome result) {
-        if (result instanceof DeviceVerificationOutcome.ConfirmationRequired consent) {
-            this.deviceVerificationPage.displayConfirmation(
-                    context,
-                    consent.clientId(),
-                    consent.principal(),
-                    consent.requestedScopes(),
-                    consent.authorizedScopes(),
-                    consent.userCode(),
-                    consent.state());
-            return;
-        }
-        if (result instanceof DeviceVerificationOutcome.Approved verification) {
-            this.deviceVerificationPage.displaySuccess(context, verification.clientId());
+        try {
+            if (result instanceof DeviceVerificationOutcome.ConfirmationRequired consent) {
+                this.deviceVerificationPage.displayConfirmation(
+                        context,
+                        consent.clientId(),
+                        consent.principal(),
+                        consent.requestedScopes(),
+                        consent.authorizedScopes(),
+                        consent.userCode(),
+                        consent.state());
+                return;
+            }
+            if (result instanceof DeviceVerificationOutcome.Approved verification) {
+                this.deviceVerificationPage.displaySuccess(context, verification.clientId());
+                return;
+            }
+        } catch (RuntimeException failure) {
+            handleFailure(context, failure);
             return;
         }
         handleFailure(context, new OAuth2AuthenticationException(OAuth2ErrorCodes.SERVER_ERROR));
     }
 
     private void handleFailure(RoutingContext context, Throwable failure) {
-        if (failure instanceof OAuth2AuthenticationException exception) {
-            sendError(context, exception.getError());
-            return;
+        OAuth2Error error = failure instanceof OAuth2AuthenticationException exception
+                ? exception.getError()
+                : new OAuth2Error(OAuth2ErrorCodes.SERVER_ERROR);
+        if (OAuth2ErrorCodes.SERVER_ERROR.equals(error.getErrorCode())) {
+            LOG.error("Device verification request failed", failure);
+            error = new OAuth2Error(OAuth2ErrorCodes.SERVER_ERROR);
         }
-        sendError(context, new OAuth2Error(OAuth2ErrorCodes.SERVER_ERROR));
+        sendError(context, error);
     }
 
     private void sendError(RoutingContext context, OAuth2Error error) {

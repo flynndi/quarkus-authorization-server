@@ -9,13 +9,19 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import io.quarkiverse.authorization.server.authorization.InMemoryOAuth2AuthorizationService;
 import io.quarkiverse.authorization.server.authorization.OAuth2Authorization;
@@ -299,9 +305,10 @@ class PasswordGrantTest {
 
     @Test
     void mapsResourceOwnerAuthenticationFailureToInvalidGrant() {
+        var rejection = new AuthenticationFailedException();
         PasswordFlow provider = provider(
                 new RecordingIdentityProviderManager(
-                        Uni.createFrom().failure(new AuthenticationFailedException())));
+                        Uni.createFrom().failure(rejection)));
         PasswordGrantRequest authentication = passwordAuthentication(
                 clientIdentity(passwordClient(Set.of("message.read"))),
                 Set.of(),
@@ -312,6 +319,51 @@ class PasswordGrantTest {
                 () -> authenticate(provider, authentication).await().indefinitely());
 
         assertEquals(OAuth2ErrorCodes.INVALID_GRANT, exception.getError().getErrorCode());
+        assertSame(rejection, exception.getCause());
+    }
+
+    @ParameterizedTest
+    @MethodSource("identityProviderFailures")
+    void preservesIdentityProviderFailuresAndErasesCredentials(Throwable failure, boolean synchronous) {
+        var credentials = new AtomicReference<char[]>();
+        var observed = new AtomicReference<Throwable>();
+        IdentityProviderManager manager = new IdentityProviderManager() {
+            @Override
+            public Uni<SecurityIdentity> authenticate(AuthenticationRequest request) {
+                credentials.set(((UsernamePasswordAuthenticationRequest) request).getPassword().getPassword());
+                if (synchronous) {
+                    throw (RuntimeException) failure;
+                }
+                return Uni.createFrom().failure(failure);
+            }
+
+            @Override
+            public SecurityIdentity authenticateBlocking(AuthenticationRequest request) {
+                throw new AssertionError("Blocking authentication must not be used");
+            }
+        };
+        var tokens = new RecordingTokenGenerator();
+        var flow = provider(manager, tokens);
+        var request = passwordAuthentication(
+                clientIdentity(passwordClient(Set.of("message.read"))), Set.of(), "resource-owner-password");
+
+        authenticate(flow, request)
+                .onFailure().invoke(observed::set)
+                .onFailure().recoverWithNull()
+                .await().indefinitely();
+
+        assertSame(failure, observed.get());
+        assertArrayEquals(new char["resource-owner-password".length()], credentials.get());
+        assertNull(tokens.context);
+    }
+
+    private static Stream<Arguments> identityProviderFailures() {
+        return Stream.of(
+                Arguments.of(new SQLException("Invalid user lookup SQL"), false),
+                Arguments.of(new IllegalStateException("User lookup failed", new SQLException("Invalid SQL")), true),
+                Arguments.of(new OAuth2AuthenticationException(OAuth2ErrorCodes.SERVER_ERROR), false),
+                Arguments.of(new OAuth2AuthenticationException(OAuth2ErrorCodes.SERVER_ERROR), true),
+                Arguments.of(new OAuth2AuthenticationException(OAuth2ErrorCodes.INVALID_SCOPE), false));
     }
 
     @Test

@@ -98,16 +98,16 @@ public final class OAuth2TokenEndpointHandler implements Handler<RoutingContext>
                             () -> new OAuth2AuthenticationException(OAuth2ErrorCodes.SERVER_ERROR))
                     .subscribe()
                     .with(
-                            result -> this.tokenResponseWriter.write(context, result),
+                            result -> {
+                                try {
+                                    this.tokenResponseWriter.write(context, result);
+                                } catch (RuntimeException failure) {
+                                    this.authenticationFailureHandler.onAuthenticationFailure(context, failure);
+                                }
+                            },
                             failure -> this.authenticationFailureHandler.onAuthenticationFailure(
-                                    context,
-                                    failure instanceof OAuth2AuthenticationException oauth2AuthenticationException
-                                            ? oauth2AuthenticationException
-                                            : new OAuth2AuthenticationException(
-                                                    new OAuth2Error(
-                                                            OAuth2ErrorCodes.SERVER_ERROR),
-                                                    failure)));
-        } catch (OAuth2AuthenticationException exception) {
+                                    context, failure));
+        } catch (RuntimeException exception) {
             this.authenticationFailureHandler.onAuthenticationFailure(context, exception);
         }
     }

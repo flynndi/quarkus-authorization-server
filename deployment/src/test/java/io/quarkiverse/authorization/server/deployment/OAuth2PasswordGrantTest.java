@@ -9,11 +9,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -23,18 +28,24 @@ import org.jboss.shrinkwrap.api.asset.StringAsset;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import com.fasterxml.jackson.databind.exc.InvalidDefinitionException;
 
 import io.quarkiverse.authorization.server.authorization.OAuth2Authorization;
 import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationService;
 import io.quarkiverse.authorization.server.client.RegisteredClient;
 import io.quarkiverse.authorization.server.model.AuthorizationGrantType;
 import io.quarkiverse.authorization.server.model.OAuth2AuthenticationException;
+import io.quarkiverse.authorization.server.model.OAuth2Error;
 import io.quarkiverse.authorization.server.model.OAuth2ErrorCodes;
 import io.quarkiverse.authorization.server.runtime.client.authentication.OAuth2ClientAuthenticationToken;
 import io.quarkiverse.authorization.server.runtime.grant.password.PasswordGrant;
 import io.quarkiverse.authorization.server.runtime.grant.password.web.PasswordGrantHandler;
 import io.quarkiverse.authorization.server.runtime.grant.password.web.PasswordGrantRequestParser;
 import io.quarkiverse.authorization.server.runtime.web.ProtocolExecutor;
+import io.quarkiverse.authorization.server.runtime.web.authentication.OAuth2ErrorAuthenticationFailureHandler;
 import io.quarkiverse.authorization.server.settings.OAuth2TokenFormat;
 import io.quarkiverse.authorization.server.token.OAuth2AccessToken;
 import io.quarkiverse.authorization.server.token.OAuth2TokenType;
@@ -47,9 +58,12 @@ import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.identity.request.UsernamePasswordAuthenticationRequest;
 import io.quarkus.security.runtime.QuarkusPrincipal;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
+import io.quarkus.test.InMemoryLogHandler;
 import io.quarkus.test.QuarkusUnitTest;
 import io.quarkus.vertx.http.runtime.security.HttpSecurityUtils;
 import io.quarkus.vertx.http.runtime.security.QuarkusHttpUser;
+import io.restassured.config.HttpClientConfig;
+import io.restassured.config.RestAssuredConfig;
 import io.restassured.http.ContentType;
 import io.smallrye.mutiny.Uni;
 import io.vertx.ext.web.RoutingContext;
@@ -60,6 +74,11 @@ class OAuth2PasswordGrantTest {
     private static final String TOKEN_CLIENT_SECRET_HASH = "$2y$10$ZgQdJ3httrP2QQBD/6Tyle6WTzcrBmVR7R8Rw4n966J8sctedV4va";
     private static final String REFRESH_CLIENT_SECRET_HASH = "$2a$10$XGwB4UKiactHgawjTMaioe5al6.c1N0AMz3PE4xi.cAZ/f.9OV1yK";
     private static final String OPENID_CLIENT_SECRET_HASH = "$2a$10$zbxRJXxAAXD/gLh4SXKGouLCzyn6MmoFVVJUtsYcR9qDlSY/QDplO";
+    private static final String SYNC_SQL_FAILURE = "Synchronous identity lookup failed: jdbc:postgresql://private-db/accounts";
+    private static final String ASYNC_SQL_FAILURE = "Asynchronous identity lookup failed: db-password=internal-secret";
+    private static final String EXPLICIT_SQL_FAILURE = "Classified identity lookup failed: account-table=private_users";
+    private static final String CUSTOM_SYNC_SQL_FAILURE = "Synchronous custom grant failed: db-password=custom-secret";
+    private static final String CUSTOM_ASYNC_SQL_FAILURE = "Asynchronous custom grant failed: account-table=custom_users";
 
     @RegisterExtension
     static final QuarkusUnitTest unitTest = new QuarkusUnitTest()
@@ -111,6 +130,7 @@ class OAuth2PasswordGrantTest {
         ResourceOwnerIdentityProvider.invocations.set(0);
         ResourceOwnerIdentityProvider.clientPrincipalName = null;
         TestGrantHandler.invocations.set(0);
+        TestGrantHandler.lastIssuedToken = null;
     }
 
     @Test
@@ -197,6 +217,40 @@ class OAuth2PasswordGrantTest {
                 .body("error", equalTo(OAuth2ErrorCodes.INVALID_GRANT))
                 .body("error_description", nullValue());
 
+        assertEquals(1, ResourceOwnerIdentityProvider.invocations.get());
+    }
+
+    @Test
+    void synchronousIdentityProviderFailureReturnsServerError() {
+        assertServerError(passwordRequest("oauth-client", "identity-sync-failure", "resource-owner-password"),
+                SYNC_SQL_FAILURE);
+        assertEquals(1, ResourceOwnerIdentityProvider.invocations.get());
+    }
+
+    @Test
+    void asynchronousIdentityProviderFailureReturnsServerError() {
+        assertServerError(passwordRequest("oauth-client", "identity-async-failure", "resource-owner-password"),
+                ASYNC_SQL_FAILURE);
+        assertEquals(1, ResourceOwnerIdentityProvider.invocations.get());
+    }
+
+    @Test
+    void classifiedIdentityProviderServerErrorDoesNotExposeDetails() {
+        assertServerError(passwordRequest("oauth-client", "identity-server-error", "resource-owner-password"),
+                EXPLICIT_SQL_FAILURE);
+        assertEquals(1, ResourceOwnerIdentityProvider.invocations.get());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "identity-sync-protocol-error", "identity-async-protocol-error" })
+    void preservesIdentityProviderProtocolError(String username) {
+        passwordRequest("oauth-client", username, "resource-owner-password")
+                .post("/oauth2/token")
+                .then()
+                .statusCode(400)
+                .body("error", equalTo(OAuth2ErrorCodes.INVALID_REQUEST))
+                .body("error_description", equalTo("Resource-owner policy rejected the request"))
+                .body("error_uri", equalTo("https://issuer.example.com/policy"));
         assertEquals(1, ResourceOwnerIdentityProvider.invocations.get());
     }
 
@@ -338,7 +392,7 @@ class OAuth2PasswordGrantTest {
                 .when()
                 .post("/oauth2/token")
                 .then()
-                .statusCode(400)
+                .statusCode(500)
                 .body("error", equalTo(OAuth2ErrorCodes.SERVER_ERROR));
 
         assertEquals(1, TestGrantHandler.invocations.get());
@@ -394,8 +448,75 @@ class OAuth2PasswordGrantTest {
                 .formParam("custom_value", "null-result")
                 .post("/oauth2/token")
                 .then()
-                .statusCode(400)
+                .statusCode(500)
                 .body("error", equalTo(OAuth2ErrorCodes.SERVER_ERROR));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "sync-failure", "async-failure" })
+    void customGrantFailureReturnsServerError(String failureMode) {
+        assertServerError(given().auth()
+                .preemptive()
+                .basic("oauth-client", "client-secret")
+                .contentType(ContentType.URLENC)
+                .formParam("grant_type", "urn:test:grant")
+                .formParam("custom_value", failureMode),
+                "sync-failure".equals(failureMode) ? CUSTOM_SYNC_SQL_FAILURE : CUSTOM_ASYNC_SQL_FAILURE);
+        assertEquals(1, TestGrantHandler.invocations.get());
+        assertEquals(0, ResourceOwnerIdentityProvider.invocations.get());
+    }
+
+    @Test
+    void tokenResponseSerializationFailureReturnsServerError() {
+        assertServerError(given()
+                .config(RestAssuredConfig.config().httpClient(
+                        HttpClientConfig.httpClientConfig().setParam("http.socket.timeout", 5000)))
+                .auth().preemptive().basic("oauth-client", "client-secret")
+                .contentType(ContentType.URLENC)
+                .formParam("grant_type", "urn:test:grant")
+                .formParam("custom_value", "serialization-failure"),
+                failure -> failure instanceof InvalidDefinitionException
+                        && failure.getMessage().contains("custom_value"));
+        assertEquals(1, TestGrantHandler.invocations.get());
+        assertNotNull(TestGrantHandler.lastIssuedToken);
+        assertNotNull(authorizations.findByToken(TestGrantHandler.lastIssuedToken, OAuth2TokenType.ACCESS_TOKEN));
+    }
+
+    private static void assertServerError(io.restassured.specification.RequestSpecification request,
+            String sqlFailureMessage) {
+        assertServerError(request,
+                failure -> failure instanceof SQLException && sqlFailureMessage.equals(failure.getMessage()));
+    }
+
+    private static void assertServerError(io.restassured.specification.RequestSpecification request,
+            Predicate<Throwable> expectedCause) {
+        var logger = Logger.getLogger(OAuth2ErrorAuthenticationFailureHandler.class.getName());
+        var logHandler = new InMemoryLogHandler(record -> true);
+        logger.addHandler(logHandler);
+        try {
+            request.post("/oauth2/token")
+                    .then()
+                    .statusCode(500)
+                    .contentType(ContentType.JSON)
+                    .body("$", equalTo(Map.of("error", OAuth2ErrorCodes.SERVER_ERROR)));
+            assertTrue(logHandler.getRecords().stream().anyMatch(record -> retainsFailure(record, expectedCause)),
+                    "Server failures must be logged at ERROR with the original cause");
+        } finally {
+            logger.removeHandler(logHandler);
+            logHandler.close();
+        }
+    }
+
+    private static boolean retainsFailure(LogRecord record, Predicate<Throwable> expectedCause) {
+        if (record.getLevel().intValue() < Level.SEVERE.intValue()) {
+            return false;
+        }
+        for (Throwable failure = record.getThrown(); failure != null; failure = failure.getCause()) {
+            if (expectedCause.test(failure)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static io.restassured.specification.RequestSpecification validPasswordRequest() {
@@ -419,12 +540,17 @@ class OAuth2PasswordGrantTest {
 
     private static io.restassured.specification.RequestSpecification passwordRequest(
             String clientId, String password) {
+        return passwordRequest(clientId, "resource-owner", password);
+    }
+
+    private static io.restassured.specification.RequestSpecification passwordRequest(
+            String clientId, String username, String password) {
         return given().auth()
                 .preemptive()
                 .basic(clientId, "client-secret")
                 .contentType(ContentType.URLENC)
                 .formParam("grant_type", "password")
-                .formParam("username", "resource-owner")
+                .formParam("username", username)
                 .formParam("password", password);
     }
 
@@ -449,6 +575,27 @@ class OAuth2PasswordGrantTest {
             if (routingContext != null && routingContext.user() instanceof QuarkusHttpUser user) {
                 clientPrincipalName = user.getSecurityIdentity().getPrincipal().getName();
             }
+            switch (request.getUsername()) {
+                case "identity-sync-failure":
+                    throw new RuntimeException("Identity lookup failed", new SQLException(SYNC_SQL_FAILURE));
+                case "identity-async-failure":
+                    return Uni.createFrom().failure(new SQLException(ASYNC_SQL_FAILURE));
+                case "identity-server-error":
+                    return Uni.createFrom().failure(new OAuth2AuthenticationException(
+                            new OAuth2Error(OAuth2ErrorCodes.SERVER_ERROR,
+                                    "Identity storage unavailable: db-password=internal-secret",
+                                    "https://private-db.example.com/debug"),
+                            new SQLException(EXPLICIT_SQL_FAILURE)));
+                case "identity-sync-protocol-error":
+                    throw new OAuth2AuthenticationException(new OAuth2Error(OAuth2ErrorCodes.INVALID_REQUEST,
+                            "Resource-owner policy rejected the request", "https://issuer.example.com/policy"));
+                case "identity-async-protocol-error":
+                    return Uni.createFrom().failure(new OAuth2AuthenticationException(
+                            new OAuth2Error(OAuth2ErrorCodes.INVALID_REQUEST,
+                                    "Resource-owner policy rejected the request", "https://issuer.example.com/policy")));
+                default:
+                    break;
+            }
             if (!"resource-owner".equals(request.getUsername())
                     || !Arrays.equals(
                             "resource-owner-password".toCharArray(),
@@ -471,6 +618,7 @@ class OAuth2PasswordGrantTest {
     public static class TestGrantHandler implements TokenGrantHandler {
         private static final AuthorizationGrantType GRANT_TYPE = new AuthorizationGrantType("urn:test:grant");
         static final AtomicInteger invocations = new AtomicInteger();
+        static volatile String lastIssuedToken;
         @Inject
         ProtocolExecutor executor;
         @Inject
@@ -483,10 +631,13 @@ class OAuth2PasswordGrantTest {
 
         @Override
         public Uni<TokenIssuanceResult> handle(RoutingContext context) {
+            invocations.incrementAndGet();
+            if ("sync-failure".equals(context.request().getFormAttribute("custom_value"))) {
+                throw new RuntimeException("Custom grant failed", new SQLException(CUSTOM_SYNC_SQL_FAILURE));
+            }
             return Uni.createFrom()
                     .deferred(
                             () -> {
-                                invocations.incrementAndGet();
                                 var user = (QuarkusHttpUser) context.user();
                                 var request = new TestGrantRequest(
                                         context.request().getFormAttribute("custom_value"),
@@ -494,7 +645,10 @@ class OAuth2PasswordGrantTest {
                                 if ("null-result".equals(request.value())) {
                                     return Uni.createFrom().nullItem();
                                 }
-                                if (!"accepted".equals(request.value())) {
+                                if ("async-failure".equals(request.value())) {
+                                    return Uni.createFrom().failure(new SQLException(CUSTOM_ASYNC_SQL_FAILURE));
+                                }
+                                if (!"accepted".equals(request.value()) && !"serialization-failure".equals(request.value())) {
                                     return Uni.createFrom()
                                             .failure(
                                                     new OAuth2AuthenticationException(
@@ -532,12 +686,15 @@ class OAuth2PasswordGrantTest {
                                                                             OAuth2TokenFormat.REFERENCE
                                                                                     .getValue()))
                                                             .build());
+                                            lastIssuedToken = token.getTokenValue();
                                             return new TokenIssuanceResult(
                                                     client,
                                                     request.client(),
                                                     token,
                                                     null,
-                                                    Map.of("custom_value", request.value()));
+                                                    Map.of("custom_value", "serialization-failure".equals(request.value())
+                                                            ? new Object()
+                                                            : request.value()));
                                         });
                             });
         }

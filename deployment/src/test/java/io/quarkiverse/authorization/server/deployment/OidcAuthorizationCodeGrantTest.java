@@ -332,7 +332,7 @@ class OidcAuthorizationCodeGrantTest {
         String code = issueCode("bad", "openid", null);
         exchange("bad", code, VERIFIER)
                 .then()
-                .statusCode(400)
+                .statusCode(500)
                 .body("error", equalTo("server_error"));
         OAuth2Authorization saved = this.authorizationService.findByToken(code, new OAuth2TokenType("code"));
         assertTrue(saved.getAuthorizationCode().isActive());

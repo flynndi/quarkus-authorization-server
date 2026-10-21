@@ -43,11 +43,14 @@ class PushedAuthorizationEndpointTest {
     RegisteredClientRepository clients;
     @Inject
     OAuth2AuthorizationService authorizations;
+    @Inject
+    OAuth2ServerFailureTestSupport.Authorizations failingAuthorizations;
 
     @RegisterExtension
     static final QuarkusUnitTest unitTest = new QuarkusUnitTest()
             .withApplicationRoot(jar -> AuthorizationInteractionTestSupport.application(jar, false)
-                    .addClasses(ClientAssertionTestSupport.class, RegistrationScopePolicy.class))
+                    .addClasses(ClientAssertionTestSupport.class, RegistrationScopePolicy.class,
+                            OAuth2ServerFailureTestSupport.class, OAuth2ServerFailureTestSupport.Authorizations.class))
             .overrideConfigKey("quarkus.authorization-server.pushed-authorization-requests-enabled", "true")
             .overrideConfigKey("quarkus.authorization-server.oidc.client-registration.enabled", "true")
             .overrideConfigKey("quarkus.authorization-server.pushed-authorization-request-endpoint", PAR)
@@ -154,6 +157,23 @@ class PushedAuthorizationEndpointTest {
         given().redirects().follow(false).queryParams(PushedAuthorizationEndpointTest.parameters("browser"))
                 .get("/authorize").then().statusCode(302).header("Location", endsWith("/server/auth/login"));
         given().get(PAR).then().statusCode(405);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = { false, true })
+    void storageFailureReturnsSanitizedServerErrorAndLogsCause(boolean classified) {
+        this.failingAuthorizations.failOn("save", classified);
+        try {
+            OAuth2ServerFailureTestSupport.assertServerFailureLogged(
+                    () -> given().redirects().follow(false)
+                            .formParams(PushedAuthorizationEndpointTest.parameters("direct")).post(PAR))
+                    .then().statusCode(500)
+                    .contentType(ContentType.JSON)
+                    .header("Location", nullValue())
+                    .body("$", equalTo(Map.of("error", "server_error")));
+        } finally {
+            this.failingAuthorizations.clearFailure();
+        }
     }
 
     @Test

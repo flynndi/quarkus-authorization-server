@@ -2,6 +2,7 @@ package io.quarkiverse.authorization.server.deployment;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -23,6 +24,8 @@ import jakarta.inject.Inject;
 import org.jboss.shrinkwrap.api.asset.StringAsset;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import io.quarkiverse.authorization.server.authorization.OAuth2Authorization;
 import io.quarkiverse.authorization.server.authorization.OAuth2AuthorizationService;
@@ -51,7 +54,9 @@ class OAuth2DeviceVerificationEndpointTest {
             .withApplicationRoot(
                     jar -> jar.addClasses(
                             LogoutTestApplication.class,
-                            LogoutTestApplication.PasswordProvider.class)
+                            LogoutTestApplication.PasswordProvider.class,
+                            OAuth2ServerFailureTestSupport.class,
+                            OAuth2ServerFailureTestSupport.Authorizations.class)
                             .addAsResource(
                                     new StringAsset(
                                             """
@@ -77,6 +82,8 @@ class OAuth2DeviceVerificationEndpointTest {
 
     @Inject
     OAuth2AuthorizationService authorizations;
+    @Inject
+    OAuth2ServerFailureTestSupport.Authorizations failingAuthorizations;
     @Inject
     Instance<DeviceVerificationService> verificationProvider;
     @Inject
@@ -236,6 +243,46 @@ class OAuth2DeviceVerificationEndpointTest {
         assertFalse(authorization(first.userCode()).getToken(OAuth2UserCode.class).isActive());
         assertTrue(authorization(first.userCode()).getToken(OAuth2DeviceCode.class).isActive());
         assertFalse(authorization(second.userCode()).getToken(OAuth2DeviceCode.class).isActive());
+    }
+
+    @ParameterizedTest
+    @CsvSource({ "find,false", "find,true", "save,false", "save,true" })
+    void verificationStorageFailureReturnsSanitizedPageAndLogsCause(String operation, boolean classified) {
+        IssuedDevice issued = issue("message.read");
+        BrowserSession browser = login(null);
+        this.failingAuthorizations.failOn(operation, classified);
+        try {
+            assertServerErrorPage(OAuth2ServerFailureTestSupport.assertServerFailureLogged(
+                    () -> given().cookies(browser.cookies()).redirects().follow(false)
+                            .queryParam("user_code", issued.userCode()).get(DEVICE_VERIFICATION_PATH)));
+        } finally {
+            this.failingAuthorizations.clearFailure();
+        }
+        assertTrue(authorization(issued.userCode()).getToken(OAuth2UserCode.class).isActive());
+    }
+
+    @ParameterizedTest
+    @CsvSource({ "find,false", "find,true", "save,false", "save,true" })
+    void consentStorageFailureReturnsSanitizedPageAndLogsCause(String operation, boolean classified) {
+        IssuedDevice issued = issue("message.read");
+        BrowserSession browser = login(null);
+        Response page = confirmation(browser, issued);
+        this.failingAuthorizations.failOn(operation, classified);
+        try {
+            assertServerErrorPage(OAuth2ServerFailureTestSupport.assertServerFailureLogged(
+                    () -> submit(browser, issued, page, true)));
+        } finally {
+            this.failingAuthorizations.clearFailure();
+        }
+        assertTrue(authorization(issued.userCode()).getToken(OAuth2UserCode.class).isActive());
+    }
+
+    private static void assertServerErrorPage(Response response) {
+        response.then().statusCode(500).contentType(ContentType.HTML)
+                .body(containsString("server_error"))
+                .body(not(containsString(OAuth2ServerFailureTestSupport.SENSITIVE_DESCRIPTION)))
+                .body(not(containsString(OAuth2ServerFailureTestSupport.SENSITIVE_URI)))
+                .body(not(containsString(OAuth2ServerFailureTestSupport.SQL_FAILURE)));
     }
 
     private static Response confirmation(BrowserSession browser, IssuedDevice device) {
